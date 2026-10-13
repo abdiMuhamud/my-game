@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Mwizi! Mombasa</string>
+    <string name="title_activity_main">Mwizi! Mombasa</string>
+    <string name="package_name">ke.mombasa.mwizi</string>
+    <string name="custom_url_scheme">ke.mombasa.mwizi</string>
+</resources>

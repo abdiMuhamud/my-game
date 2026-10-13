@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="sw">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#1546b8">
+<title>Mwizi! Mombasa</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "./lib/three.module.min.js" } }</script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="#ffc21a" stroke="#b77900" stroke-width="2"/><circle cx="12" cy="12" r="6.5" fill="#ffe07a"/><path d="M10 8v8M10 12l4-4M10 12l4 4" stroke="#b77900" stroke-width="2.2" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 21C5 15.5 2 12 2 8.2 2 5.3 4.2 3 7 3c2 0 3.8 1 5 2.8C13.200 4 15 3 17 3c2.800 0 5 2.300 5 5.200C22 12 19 15.500 12 21z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="5" y="4" width="5" height="16" rx="1.500" fill="currentColor"/><rect x="14" y="4" width="5" height="16" rx="1.500" fill="currentColor"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.500v15a1 1 0 0 0 1.500.900l12.500-7.500a1 1 0 0 0 0-1.800L8.500 3.600A1 1 0 0 0 7 4.500z" fill="currentColor"/></symbol>
+    <symbol id="i-sound" viewBox="0 0 24 24"><path d="M3 9.500v5h4l5 4.500V5L7 9.500H3z" fill="currentColor"/><path d="M15.500 8.500a5 5 0 0 1 0 7M18 6a8.500 8.500 0 0 1 0 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="i-mute" viewBox="0 0 24 24"><path d="M3 9.500v5h4l5 4.500V5L7 9.500H3z" fill="currentColor"/><path d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2.200" stroke-linecap="round"/></symbol>
+    <symbol id="i-ndara" viewBox="0 0 32 32"><ellipse cx="16" cy="16" rx="8.500" ry="13.500" fill="#fff" stroke="#0d1b2a" stroke-width="2"/><ellipse cx="16" cy="16" rx="5.500" ry="10.500" fill="#ff5c8a"/><path d="M16 8.500C12 12 10 15 9.500 19M16 8.500c4 3.500 6 6.500 6.500 10.500" stroke="#0d1b2a" stroke-width="2.600" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="i-swipe-h" viewBox="0 0 24 24"><path d="M3 12h18M7 7l-5 5 5 5M17 7l5 5-5 5" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 21V4M6 10l6-6 6 6" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v17M6 14l6 6 6-6" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 3h10v5a5 5 0 0 1-10 0V3zM7 5H3v2a4 4 0 0 0 4 4M17 5h4v2a4 4 0 0 1-4 4M12 13v4M8 21h8M9.500 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+  </defs>
+</svg>
+
+<canvas id="c"></canvas>
+<div id="vignette"></div>
+
+<div id="loading"><div class="logo">MWIZI!</div><div class="loadbar"><i id="loadFill"></i></div><span>Mombasa inapakia…</span></div>
+
+<div id="hud" class="hidden">
+  <div class="top">
+    <button class="ibtn" id="btnPause" aria-label="Simamisha"><svg><use href="#i-pause"/></svg></button>
+    <div class="zone"><small>Kituo kijacho</small><b id="zoneName">MOI AVENUE</b><i id="zoneDist">420 m</i></div>
+    <div class="stats">
+      <div class="pill"><svg><use href="#i-coin"/></svg><span id="cash">0</span></div>
+      <div class="pill mult" id="mult">x1</div>
+    </div>
+  </div>
+  <div class="chase">
+    <div class="hearts" id="hearts"><svg><use href="#i-heart"/></svg><svg><use href="#i-heart"/></svg><svg><use href="#i-heart"/></svg></div>
+    <div class="bar"><i id="gapFill"></i><em id="gapHim"></em></div>
+    <b id="gapText">16 m</b>
+  </div>
+  <div class="boost hidden" id="boost"><i id="boostFill"></i><span>KAHAWA TUNGU!</span></div>
+</div>
+
+<div id="tag" class="hidden"><span>KIBAKA</span><b id="tagDist">16m</b></div>
+<div id="shout"></div>
+<button id="btnThrow" class="hidden" aria-label="Rusha ndara"><svg><use href="#i-ndara"/></svg><i id="throwN">1</i></button>
+
+<div id="menu" class="screen hidden">
+  <div class="head">
+    <h1 class="logo">MWIZI!</h1>
+    <div class="route">Likoni Ferry &rarr; Bamburi Beach</div>
+  </div>
+  <div class="foot">
+    <p class="story">Kibaka amenyakua kikapu cha Mama Fatuma pale Likoni Ferry. Mkimbize, okota pesa, umshike!</p>
+    <div class="how">
+      <div><svg><use href="#i-swipe-h"/></svg>Badili njia</div>
+      <div><svg><use href="#i-up"/></svg>Ruka</div>
+      <div><svg><use href="#i-down"/></svg>Teleza</div>
+      <div><svg><use href="#i-ndara"/></svg>Rusha ndara</div>
+    </div>
+    <button class="play" id="btnStart"><svg><use href="#i-play"/></svg>CHEZA</button>
+    <div class="best"><svg><use href="#i-trophy"/></svg>Rekodi yako <b>KSh <span id="best">0</span></b></div>
+  </div>
+</div>
+
+<div id="caught" class="overlay hidden">
+  <div class="card">
+    <div class="band">UMEMSHIKA!</div>
+    <p>Kibaka amekamatwa pale <b id="caughtZone">MARIKITI</b>. Kikapu kimerudi kwa Mama Fatuma!</p>
+    <div class="money"><svg><use href="#i-coin"/></svg><span id="caughtCash">0</span></div>
+    <p class="hint">Ukimfukuza tena na akutoroke, zawadi ya mshiko inapotea.</p>
+    <button class="big" id="btnAgain">Ametoroka tena! Mfukuze</button>
+    <button class="big alt" id="btnBank">Chukua pesa, nenda nyumbani</button>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="card">
+    <div class="band blue">PUMZIKA KIDOGO</div>
+    <button class="big" id="btnResume">Endelea</button>
+    <button class="big alt" id="btnSound"><svg><use id="soundIcon" href="#i-sound"/></svg><span id="soundText">Sauti: imewashwa</span></button>
+    <button class="big alt" id="btnQuit">Maliza mbio</button>
+  </div>
+</div>
+
+<div id="over" class="overlay hidden">
+  <div class="card">
+    <div class="band" id="overBand">AMETOROKA!</div>
+    <p id="overHead">Kibaka atoroka pale Nyali</p>
+    <div class="money"><svg><use href="#i-coin"/></svg><span id="overCash">0</span></div>
+    <div class="grid3"><div><b id="overDist">0 m</b>Umbali</div><div><b id="overCatch">0</b>Mshiko</div><div><b id="overBest">0</b>Rekodi</div></div>
+    <button class="big" id="btnRetry">Cheza tena</button>
+    <button class="big alt" id="btnShare">Tuma kwa marafiki</button>
+  </div>
+</div>
+
+<div id="demoTitle" class="demo hidden">
+  <h1 class="logo xl">MWIZI!</h1>
+  <div class="tagline">Mbio za mitaa ya Mombasa</div>
+</div>
+<div id="demoZone" class="demo hidden"><span id="demoZoneName">LIKONI FERRY</span></div>
+<div id="demoEnd" class="demo hidden">
+  <h1 class="logo xl">MWIZI!</h1>
+  <div class="tagline">Mshike Kibaka. Mombasa Raha!</div>
+  <div class="cta">Cheza sasa kwenye Android</div>
+</div>
+
+<script type="module" src="game.js"></script>
+</body>
+</html>

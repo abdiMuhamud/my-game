@@ -1,0 +1,6 @@
+{
+  "appId": "ke.mombasa.mwizi",
+  "appName": "Mwizi! Mombasa",
+  "webDir": "www",
+  "android": { "backgroundColor": "#1546b8" }
+}
