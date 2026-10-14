@@ -109,3 +109,27 @@ svg { width: 1em; height: 1em; display: block; flex: none; }
 .demo .cta { margin-top: 20px; background: linear-gradient(180deg, #fff27a, #ffc21a 60%, #ff9d1a); border-radius: 999px; padding: 11px 28px; font: 400 clamp(18px, 5.4vw, 30px) var(--display); box-shadow: 0 6px 0 var(--sun-dk); }
 #demoZone { justify-content: flex-end; padding-bottom: 14%; }
 #demoZone span { background: linear-gradient(180deg, #2f6df0, #1546b8); color: #fff; border-radius: 18px; padding: 10px 30px; font: 400 clamp(24px, 7.5vw, 44px) var(--display); letter-spacing: 1px; box-shadow: 0 6px 0 #0c2a78, 0 12px 20px rgba(0, 0, 0, .35), inset 0 0 0 3px rgba(255, 255, 255, .35); }
+
+/* Coastal street edition: leave the people and neighbourhood in view. */
+.edition { font-size: 10px; letter-spacing: 3.5px; color: #fff3cd; margin-bottom: 16px; }
+.city-title { font: 400 25px var(--display); letter-spacing: 9px; margin: 12px 0 0 7px; color: #fff5df; text-shadow: 0 3px 0 #0c4d58; }
+.screen { padding-top: calc(var(--top) + 12px); background: linear-gradient(180deg, rgba(5, 48, 60, .75), transparent 31%, transparent 58%, rgba(5, 35, 43, .94) 91%); }
+.screen .head { width: min(100%, 420px); }
+.screen .logo { font-size: clamp(64px, 19vw, 102px); }
+.route { background: rgba(5, 48, 60, .76); color: #fff3cf; border: 1px solid #f5dda466; font: 800 10px var(--body); letter-spacing: 1.5px; box-shadow: none; margin-top: 13px; padding: 9px 14px; }
+.route span { color: #ffc21a; margin: 0 8px; }
+.story { max-width: 350px; margin: 0 auto 14px; color: #f4ead6; font-size: 13px; }
+.how div { background: #ffffff0d; border: 1px solid #fff3; border-radius: 10px; box-shadow: none; }
+.play { border-radius: 16px; font-size: 27px; height: 60px; animation: none; }
+.zone i { background: #063d48d9; }
+@media (min-width: 850px) {
+  .screen { align-items: flex-start; justify-content: center; gap: 32px; padding-left: 7vw; background: linear-gradient(90deg, #052f3be8, #052f3b77 35%, transparent 65%); }
+  .screen .head, .screen .foot { width: 340px; }
+  .screen .logo { font-size: 100px; }
+}
+@media (max-height: 700px) {
+  .edition { margin-bottom: 8px; } .screen .logo { font-size: 64px; }
+  .city-title { font-size: 18px; margin-top: 8px; } .how { margin-bottom: 9px; }
+  .how div { padding: 5px 2px; } .story { font-size: 11px; margin-bottom: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .play { animation: none; } }

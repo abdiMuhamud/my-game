@@ -520,12 +520,61 @@ function ground(g, color, w, x, map) { // a slab of land beside the road
   const s = m(G.box, map ? cached('gmap' + color, () => Lam({ color, map })) : M(color), w, 0.3, CHUNK, x, -0.14, 0, g); s.castShadow = false; return s;
 }
 
+// Street-level details make the neighbourhood readable from the chase camera.
+function streetSign(text, subtitle, color = PAL.blue) {
+  return inst('street-sign:' + text, () => {
+    const g = new THREE.Group();
+    const tex = canvasTex(512, 192, (x, w, h) => {
+      x.fillStyle = hex(color); x.fillRect(0, 0, w, h);
+      x.strokeStyle = '#fff1cc'; x.lineWidth = 8; x.strokeRect(10, 10, w - 20, h - 20);
+      label(x, text, w / 2, 78, 54, '#fff1cc', w - 40);
+      label(x, subtitle, w / 2, 142, 26, '#fff1cc', w - 40);
+    });
+    m(G.box, M(PAL.wood), 0.12, 3.5, 0.12, 0, 1.75, 0, g);
+    m(G.plane, Lam({map: tex, side: THREE.DoubleSide}), 2.8, 1.05, 1, 0, 3.1, 0, g);
+    return g;
+  });
+}
+function neighbourhoodStall(v) {
+  return inst('neighbourhood-stall:' + v, () => {
+    const g = new THREE.Group(), color = [PAL.sea, PAL.coral, PAL.pink][v % 3];
+    // A striped canvas canopy, wooden counter and visible produce baskets.
+    for (const z of [-1.6, 1.6]) m(G.cyl, M(PAL.wood), .09, 2.8, .09, 0, 1.4, z, g);
+    for (let k = 0; k < 8; k++) {
+      const roof = m(G.box, M(k % 2 ? PAL.white : color), 2.5, .08, .42, -.65, 2.7, -1.47 + k * .42, g);
+      roof.rotation.z = -.12;
+      m(G.box, M(k % 2 ? PAL.white : color), .08, .35, .42, -1.88, 2.5, -1.47 + k * .42, g);
+    }
+    m(G.box, M(PAL.wood), 1.15, .85, 3.2, -.25, .55, 0, g);
+    for (let j = 0; j < 3; j++) {
+      m(G.cyl, M(0xb88647), .68, .22, .68, -.35, 1.08, -1 + j, g);
+      for (let k = 0; k < 5; k++) m(G.sph, M([0x69a534, 0xffb52e, 0xe65d38][j]), .23, .25, .23, -.35 + Math.sin(k * 2.4) * .2, 1.25, -1 + j + Math.cos(k * 2.4) * .2, g);
+    }
+    return g;
+  });
+}
+function bunting(g, variant) {
+  const z = -3;
+  for (let j = 0; j < 13; j++) {
+    const x = -6 + j, y = 6.8 - Math.sin(j / 12 * Math.PI) * 1.2;
+    m(G.box, M(PAL.wood), 1.05, .025, .025, x, y, z, g).rotation.z = -Math.cos(j / 12 * Math.PI) * .3;
+    const flag = m(G.cone, M(BRIGHT[(j + variant) % BRIGHT.length], {side: THREE.DoubleSide}), .42, .62, .035, x, y - .3, z, g);
+    flag.rotation.z = Math.PI;
+  }
+}
+
 // One 12 m slice of street.  side -1 is the left of the road, +1 the right.
 export function buildChunk(i, zone, info, rnd) {
   const g = new THREE.Group(), ri = n => Math.floor(rnd() * n), zc = info.zoneChunk;
-  const person = (x, z, side) => { if (hooks.bystander) put(g, hooks.bystander(rnd), x, 0.16, z, -side * Math.PI / 2 + (rnd() - 0.5) * 0.9 + (rnd() < 0.25 ? side * 1.3 : 0)); };
+  const person = (x, z, side) => {
+    if (!hooks.bystander) return;
+    const p = put(g, hooks.bystander(rnd), x, 0.16, z, -side * Math.PI / 2 + (rnd() - 0.5) * 0.9);
+    p.userData.streetPerson = true; p.userData.phase = rnd() * Math.PI * 2;
+  };
+  if (['MARIKITI', 'MJI WA KALE', 'LIKONI FERRY'].includes(zone.name) && zc % 3 === 0) bunting(g, i);
+  if (i === 1) put(g, streetSign('LIKONI FERRY', 'MOMBASA • KARIBU PWANI'), 5.1, 0, 1, -.25);
   if (info.first && i > 0) { gantry(g, CHUNK / 2 - 0.5, zone.name); put(g, inst('zebra', MODEL.zebra), 0, 0, CHUNK / 2 - 3); }
-  if (zone.name === 'MOI AVENUE' && zc % 16 === 3) put(g, inst('tusks', MODEL.tusks), 0, 0, 0);
+  if (zone.name === 'MOI AVENUE' && zc % 12 === 1) put(g, inst('tusks', MODEL.tusks), 0, 0, 0);
   for (const side of [-1, 1]) {
     const kind = side < 0 ? zone.L : zone.R, X = v => side * v, face = side > 0 ? 0 : Math.PI;
     const palm = (x, z) => put(g, inst('palm' + ri(4), () => MODEL.palm(ri(4))), X(x), 0, z, rnd() * 6);
@@ -547,7 +596,7 @@ export function buildChunk(i, zone, info, rnd) {
       if (kind === 'beach') {
         if (zc % 4 === 1) put(g, inst('camel', MODEL.camel), X(8 + rnd() * 3), 0, rnd() * 6 - 3, rnd() * 6);
         if (rnd() < 0.6) dhow(20, 40);
-        if (rnd() < 0.5) person(5 + rnd() * 2, rnd() * 8 - 4, side);
+        if (rnd() < 0.5) person(X(5 + rnd() * 2), rnd() * 8 - 4, side);
       } else {
         if (zc % 3 === 1) put(g, inst('hut', MODEL.hut), X(11 + rnd() * 4), 0, 0);
         if (zc % 3 === 2) { const b = building(zc % 2 ? 'tower' : 'balcony', 5, i % 3); put(g, b.obj, X(26), 0, 0, face); }
@@ -563,7 +612,8 @@ export function buildChunk(i, zone, info, rnd) {
       else if (rnd() < 0.55) dhow(16, 50);
       if (rnd() < 0.4) palm(5.2, rnd() * 8 - 4);
       if (rnd() < 0.3) put(g, inst('bench', MODEL.bench), X(5.4), 0.16, rnd() * 6 - 3, face);
-      if (rnd() < 0.5) person(4.9, rnd() * 8 - 4, side);
+      person(X(4.9), -3, side);
+      if (zc % 2 === 0) person(X(5.1), 2, side);
       continue;
     }
     ground(g, kind === 'market' ? 0xd6b98a : PAL.pave, 50, X(4 + sw + 25));
@@ -578,20 +628,21 @@ export function buildChunk(i, zone, info, rnd) {
         flag.scale.set(2.4, 1.6, 1); flag.position.set(X(8) + 1.2, h + 4.1, 0); g.add(flag);
       }
       if (rnd() < 0.5) palm(5.4, rnd() * 8 - 4);
-      if (rnd() < 0.5) person(4.9, rnd() * 8 - 4, side);
+      person(X(4.9), -3, side);
+      if (zc % 2 === 0) person(X(5.1), 2, side);
       continue;
     }
     // streets with buildings: city, market, old town
     const x0 = 4 + sw + 0.2;
     if (kind === 'old' && zc % 6 === 3 && side > 0) put(g, inst('mosque', MODEL.mosque), x0, 0, 0);
     else {
-      const modern = zone.name === 'MOI AVENUE' ? 0.45 : 0.2;
+      const modern = zone.name === 'MOI AVENUE' ? 0.12 : 0.04;
       const style = kind === 'old' ? 'old' : kind === 'market' ? 'pastel' : rnd() < modern ? 'tower' : rnd() < 0.55 ? 'cbd' : 'balcony';
       const floors = style === 'tower' ? 6 + ri(4) : kind === 'old' ? 2 + ri(2) : 2 + ri(3);
       const b = building(style, floors, ri(3));
       put(g, b.obj, X(x0 + BD / 2 + (kind === 'market' ? 1.2 : 0) + (style === 'tower' ? 1.4 : 0)), 0, 0, face);
     }
-    if (kind === 'market') { for (const z of rnd() < 0.7 ? [-3, 3] : [-3]) { put(g, inst('stall' + ri(6), () => MODEL.stall(ri(8))), X(5.2), 0, z, face + Math.PI); person(6.15, z, side); } }
+    if (kind === 'market') { for (const z of rnd() < 0.7 ? [-3, 3] : [-3]) { put(g, inst('stall' + ri(6), () => MODEL.stall(ri(8))), X(5.2), 0, z, face + Math.PI); person(X(6.15), z, side); } }
     else {
       if (i % 3 === 0 && kind === 'city') lamp(5.7);
       if (kind === 'city') {
@@ -601,8 +652,16 @@ export function buildChunk(i, zone, info, rnd) {
         else if (r < 0.55) put(g, inst('bin', MODEL.bin), X(5.6), 0.16, rnd() * 8 - 4);
         else if (r < 0.65) put(g, inst('bench', MODEL.bench), X(5.5), 0.16, rnd() * 6 - 3, face);
       }
-      const n = Math.floor(rnd() * 2.6);
-      for (let k = 0; k < n; k++) person(4.4 + rnd() * (sw - 0.6), rnd() * 10 - 5, side);
+      if (zc % 2 === 0 && kind !== 'old') {
+        put(g, neighbourhoodStall(i % 3), X(6.3), .16, -2, face);
+        person(X(6.65), -2, side);
+      }
+      if (zc % 4 === 1) {
+        const names = kind === 'old' ? ['MJI WA KALE', 'OLD TOWN • MOMBASA'] : kind === 'city' && zone.name === 'LIKONI FERRY' ? ['MAMA FATUMA', 'MAHAMRI • CHAI • MADAFU'] : ['MOMBASA RAHA', 'KARIBU PWANI'];
+        put(g, streetSign(...names, i % 2 ? PAL.sea : PAL.blue), X(5.4), 0, 4, -side * .35);
+      }
+      const n = 2 + Math.floor(rnd() * 2);
+      for (let k = 0; k < n; k++) person(X(4.4 + rnd() * (sw - 0.6)), rnd() * 10 - 5, side);
     }
   }
   return g;

@@ -15,11 +15,24 @@ const out = join(fileURLToPath(new URL('.', import.meta.url)), '..', 'video');
 await mkdir(join(out, 'stills'), { recursive: true });
 
 const server = await serve(PORT);
-const browser = await puppeteer.launch({ headless: true, args: ['--use-angle=d3d11', '--enable-gpu', '--ignore-gpu-blocklist', '--hide-scrollbars'] });
+const linux = process.platform === 'linux';
+const browser = await puppeteer.launch({
+  headless: true,
+  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+  args: [linux ? '--use-angle=swiftshader' : '--use-angle=d3d11',
+    ...(linux ? ['--enable-unsafe-swiftshader'] : []),
+    ...(process.env.MWIZI_NO_SANDBOX === '1' ? ['--no-sandbox'] : []),
+    '--enable-gpu', '--ignore-gpu-blocklist', '--hide-scrollbars'],
+});
 const page = await browser.newPage();
 await page.setViewport({ width: 540, height: 960, deviceScaleFactor: stills ? 1 : 2 });
 page.on('console', m => { if (m.type() === 'error') console.error('console:', m.text()); });
 page.on('pageerror', e => { console.error('page error:', e.message); process.exitCode = 1; });
+page.on('response', r => {
+  if (r.status() >= 400 && !r.url().endsWith('/favicon.ico')) {
+    console.error('asset error:', r.status(), r.url()); process.exitCode = 1;
+  }
+});
 await page.goto(`http://127.0.0.1:${PORT}/?demo&capture`);
 await page.waitForFunction('window.__ready === true', { timeout: 60000 });
 

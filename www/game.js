@@ -42,6 +42,8 @@ await Promise.all([document.fonts.load('20px "Lilita One"'), document.fonts.load
 // ---------- renderer / scene ----------
 const canvas = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: CAPTURE });
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.25;
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
@@ -69,7 +71,7 @@ scene.add(world);
 
 await loadPeople(p => { $('loadFill').style.width = (10 + p * 90) + '%'; });
 const hero = makeHero(), thief = makeThief();
-hero.scale.setScalar(1.18); thief.scale.setScalar(1.18);
+hero.scale.setScalar(1.32); thief.scale.setScalar(1.25);
 const flying = makeNdara(); flying.visible = false;
 scene.add(hero, thief, flying);
 
@@ -363,10 +365,10 @@ function place(dt) {
   const menu = S.mode === 'menu', gz = menu ? 13 : S.gap;
   if (menu) S.tx = Math.sin(S.t * 0.7) * 1.4;
   hero.visible = !(S.invuln > 0 && Math.floor(S.t * 14) % 2 === 0);
-  hero.position.set(S.x, S.y, 0);
+  hero.position.set(menu ? -0.65 : S.x, S.y, menu ? 1.4 : 0);
   hero.rotation.z = clamp((LANES[S.lane] - S.x) * -0.14, -0.28, 0.28);
-  hero.rotation.y = clamp((LANES[S.lane] - S.x) * -0.25, -0.4, 0.4);
-  hero.userData.pose(S.mode === 'caught' ? 'cheer' : S.mode === 'over' ? 'idle' : S.slide > 0 ? 'slide' : S.y > 0.05 ? 'jump' : 'run', S.speed, dt);
+  hero.rotation.y = menu ? Math.PI - .3 : clamp((LANES[S.lane] - S.x) * -0.25, -0.4, 0.4);
+  hero.userData.pose(menu ? 'cheer' : S.mode === 'caught' ? 'cheer' : S.mode === 'over' ? 'idle' : S.slide > 0 ? 'slide' : S.y > 0.05 ? 'jump' : 'run', S.speed, dt);
   thief.position.set(S.mode === 'caught' ? S.x + 0.9 : S.tx, S.ty, -gz);
   thief.rotation.y = clamp((LANES[S.tLane] - S.tx) * -0.25, -0.4, 0.4);
   thief.userData.pose(S.mode === 'caught' ? 'caught' : S.mode === 'over' ? 'idle' : S.tStun > 0 ? 'stun' : S.tSlide > 0 ? 'slide' : S.ty > 0.05 ? 'jump' : 'run', S.speed * 1.05, dt);
@@ -386,9 +388,15 @@ function place(dt) {
   }
 
   S.shake = Math.max(0, S.shake - dt);
+  // Small, inexpensive gestures bring the posed crowd to life without extra skeletons.
+  for (const chunk of chunks) {
+    for (const p of chunk.g.children) {
+      if (p.userData.streetPerson) p.rotation.z = Math.sin(S.t * 2.2 + p.userData.phase) * .025;
+    }
+  }
   const sh = S.shake * 0.5, portrait = camera.aspect < 1;
-  camera.position.set(S.x * 0.6 + (Math.random() - 0.5) * sh, (portrait ? 4.0 : 3.5) + S.y * 0.3 + (Math.random() - 0.5) * sh, portrait ? 6.2 : 5.8);
-  camera.lookAt(S.x * 0.45, 1.7, -12);
+  camera.position.set(S.x * 0.6 + (Math.random() - 0.5) * sh, (menu ? 2.8 : portrait ? 3.4 : 3.1) + S.y * 0.3 + (Math.random() - 0.5) * sh, menu ? 6.4 : portrait ? 5.5 : 5.2);
+  camera.lookAt(S.x * 0.45, menu ? 1.8 : 1.6, menu ? -2 : -10);
   const fov = (portrait ? 64 : 55) + (S.boost > 0 ? 8 : 0) + (menu ? -6 : 0);
   if (Math.abs(camera.fov - fov) > 0.05) { camera.fov += (fov - camera.fov) * Math.min(1, dt * 5); camera.updateProjectionMatrix(); }
 }

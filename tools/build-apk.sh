@@ -1,9 +1,30 @@
 #!/usr/bin/env bash
-# Builds apk/mwizi-mombasa.apk.  Run from Git Bash: bash tools/build-apk.sh
+# Builds apk/mwizi-mombasa.apk on Linux or Windows Git Bash.
 # The build happens in a short-path copy because Windows refuses to start the Android
 # tools from very deep folders (CreateProcess error 267).
 set -e
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
+if [[ "$(uname -s)" == Linux* ]]; then
+  : "${ANDROID_HOME:=${ANDROID_SDK_ROOT:-}}"
+  if [[ -z "$ANDROID_HOME" || ! -d "$ANDROID_HOME/platforms/android-35" ]]; then
+    echo 'Set ANDROID_HOME to an Android SDK with platform 35 and build tools installed.' >&2
+    exit 1
+  fi
+  # Build in a fresh staging directory so Capacitor leaves source files alone.
+  WORK="$(mktemp -d "${TMPDIR:-/tmp}/mwizi-android.XXXXXX")"
+  echo "Android build staging: $WORK"
+  cp -r "$HERE/android" "$HERE/www" "$HERE/capacitor.config.json" "$HERE/package.json" "$WORK/"
+  ln -s "$HERE/node_modules" "$WORK/node_modules"
+  cd "$WORK"
+  "$HERE/node_modules/.bin/cap" sync android
+  printf 'sdk.dir=%s\n' "$ANDROID_HOME" > android/local.properties
+  cd android
+  bash gradlew assembleDebug testDebugUnitTest --no-daemon --max-workers=2
+  mkdir -p "$HERE/apk"
+  cp app/build/outputs/apk/debug/app-debug.apk "$HERE/apk/mwizi-mombasa.apk"
+  echo "Built $HERE/apk/mwizi-mombasa.apk"
+  exit 0
+fi
 ANDROID="$LOCALAPPDATA/Android"
 WORK="${MWIZI_BUILD_DIR:-$ANDROID/build/mwizi}"
 export JAVA_HOME="$(cygpath -w "$ANDROID/jdk-21")"
