@@ -554,13 +554,17 @@ function neighbourhoodStall(v) {
   });
 }
 function bunting(g, variant) {
-  const z = -3;
-  for (let j = 0; j < 13; j++) {
-    const x = -6 + j, y = 6.8 - Math.sin(j / 12 * Math.PI) * 1.2;
-    m(G.box, M(PAL.wood), 1.05, .025, .025, x, y, z, g).rotation.z = -Math.cos(j / 12 * Math.PI) * .3;
-    const flag = m(G.cone, M(BRIGHT[(j + variant) % BRIGHT.length], {side: THREE.DoubleSide}), .42, .62, .035, x, y - .3, z, g);
-    flag.rotation.z = Math.PI;
-  }
+  // built once per colour set and merged into one mesh, so a line of flags costs a single draw call
+  const v = variant % 3;
+  put(g, inst('bunting' + v, () => {
+    const b = new THREE.Group();
+    for (let j = 0; j < 13; j++) {
+      const x = -6 + j, y = 6.8 - Math.sin(j / 12 * Math.PI) * 1.2;
+      m(G.box, M(PAL.wood), 1.05, .025, .025, x, y, 0, b).rotation.z = -Math.cos(j / 12 * Math.PI) * .3;
+      m(G.cone, M(BRIGHT[(j + v) % BRIGHT.length]), .42, .62, .035, x, y - .3, 0, b).rotation.z = Math.PI;
+    }
+    return b;
+  }), 0, 0, -3);
 }
 
 // One 12 m slice of street.  side -1 is the left of the road, +1 the right.
@@ -612,8 +616,7 @@ export function buildChunk(i, zone, info, rnd) {
       else if (rnd() < 0.55) dhow(16, 50);
       if (rnd() < 0.4) palm(5.2, rnd() * 8 - 4);
       if (rnd() < 0.3) put(g, inst('bench', MODEL.bench), X(5.4), 0.16, rnd() * 6 - 3, face);
-      person(X(4.9), -3, side);
-      if (zc % 2 === 0) person(X(5.1), 2, side);
+      if (rnd() < 0.7) person(X(4.9), rnd() * 8 - 4, side);
       continue;
     }
     ground(g, kind === 'market' ? 0xd6b98a : PAL.pave, 50, X(4 + sw + 25));
@@ -628,8 +631,7 @@ export function buildChunk(i, zone, info, rnd) {
         flag.scale.set(2.4, 1.6, 1); flag.position.set(X(8) + 1.2, h + 4.1, 0); g.add(flag);
       }
       if (rnd() < 0.5) palm(5.4, rnd() * 8 - 4);
-      person(X(4.9), -3, side);
-      if (zc % 2 === 0) person(X(5.1), 2, side);
+      if (rnd() < 0.7) person(X(4.9), rnd() * 8 - 4, side);
       continue;
     }
     // streets with buildings: city, market, old town
@@ -645,22 +647,23 @@ export function buildChunk(i, zone, info, rnd) {
     if (kind === 'market') { for (const z of rnd() < 0.7 ? [-3, 3] : [-3]) { put(g, inst('stall' + ri(6), () => MODEL.stall(ri(8))), X(5.2), 0, z, face + Math.PI); person(X(6.15), z, side); } }
     else {
       if (i % 3 === 0 && kind === 'city') lamp(5.7);
-      if (kind === 'city') {
+      const stall = zc % 2 === 0 && kind !== 'old'; // a stall takes the sidewalk, so no other props beside it
+      if (kind === 'city' && !stall) {
         const r = rnd();
         if (r < 0.3) palm(5.4, rnd() * 8 - 4);
         else if (r < 0.42) put(g, inst('stage', MODEL.stage), X(5.3), 0.16, 2, face);
         else if (r < 0.55) put(g, inst('bin', MODEL.bin), X(5.6), 0.16, rnd() * 8 - 4);
         else if (r < 0.65) put(g, inst('bench', MODEL.bench), X(5.5), 0.16, rnd() * 6 - 3, face);
       }
-      if (zc % 2 === 0 && kind !== 'old') {
-        put(g, neighbourhoodStall(i % 3), X(6.3), .16, -2, face);
-        person(X(6.65), -2, side);
+      if (stall) {
+        put(g, neighbourhoodStall(i % 3), X(5.6), .16, -2, face).scale.setScalar(0.9); // clear of the shop fronts at x 6.2
+        person(X(5.95), -2, side);
       }
       if (zc % 4 === 1) {
         const names = kind === 'old' ? ['MJI WA KALE', 'OLD TOWN • MOMBASA'] : kind === 'city' && zone.name === 'LIKONI FERRY' ? ['MAMA FATUMA', 'MAHAMRI • CHAI • MADAFU'] : ['MOMBASA RAHA', 'KARIBU PWANI'];
         put(g, streetSign(...names, i % 2 ? PAL.sea : PAL.blue), X(5.4), 0, 4, -side * .35);
       }
-      const n = 2 + Math.floor(rnd() * 2);
+      const n = Math.floor(rnd() * 2.2);
       for (let k = 0; k < n; k++) person(X(4.4 + rnd() * (sw - 0.6)), rnd() * 10 - 5, side);
     }
   }

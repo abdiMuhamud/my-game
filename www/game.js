@@ -389,9 +389,13 @@ function place(dt) {
 
   S.shake = Math.max(0, S.shake - dt);
   // Small, inexpensive gestures bring the posed crowd to life without extra skeletons.
+  // Far-off people are a few pixels tall, so they are skipped to keep the frame cheap on phones.
   for (const chunk of chunks) {
+    const near = chunk.end - S.dist < 95;
     for (const p of chunk.g.children) {
-      if (p.userData.streetPerson) p.rotation.z = Math.sin(S.t * 2.2 + p.userData.phase) * .025;
+      if (!p.userData.streetPerson) continue;
+      p.visible = near;
+      if (near) p.rotation.z = Math.sin(S.t * 2.2 + p.userData.phase) * .025;
     }
   }
   const sh = S.shake * 0.5, portrait = camera.aspect < 1;
