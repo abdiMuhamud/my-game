@@ -1,6 +1,7 @@
 // Mombasa's streets: buildings, vehicles, props and textures, all generated in code.
 // Static models are built once, merged into a single vertex-coloured mesh and then instanced.
 import * as THREE from 'three';
+import { mergeGeometries } from './lib/utils/BufferGeometryUtils.js';
 
 export const PAL = {
   blue: 0x1546b8, blueDk: 0x0c2a78, white: 0xfbfaf5, sea: 0x18b7b2, haze: 0xcfeaf3,
@@ -30,8 +31,8 @@ function M(color, extra) {
 }
 const G = {
   box: new THREE.BoxGeometry(1, 1, 1),
-  sph: new THREE.SphereGeometry(0.5, 14, 10),
-  cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 16),
+  sph: new THREE.SphereGeometry(0.5, 10, 7), // props are small on screen: keep them light
+  cyl: new THREE.CylinderGeometry(0.5, 0.5, 1, 12),
   cone: new THREE.ConeGeometry(0.5, 1, 14),
   coin: new THREE.CylinderGeometry(0.36, 0.36, 0.07, 22),
   ring: new THREE.TorusGeometry(0.36, 0.045, 8, 24),
@@ -59,6 +60,17 @@ function rbox(w, h, d, r) {
 }
 const R = (mat, w, h, d, r, x, y, z, parent) => m(rbox(w, h, d, r), mat, 1, 1, 1, x, y, z, parent);
 
+// A box whose six faces each sample their own rectangle [u0, v0, u1, v1] of one texture, so it draws in a
+// single call instead of one per face.  Face order: +x, -x, +y, -y, +z, -z.
+function atlasBox(rects) {
+  const g = new THREE.BoxGeometry(1, 1, 1), uv = g.attributes.uv;
+  for (let f = 0; f < 6; f++) {
+    const [u0, v0, u1, v1] = rects[f];
+    for (let k = 0; k < 4; k++) { const i = f * 4 + k; uv.setXY(i, u0 + uv.getX(i) * (u1 - u0), v0 + uv.getY(i) * (v1 - v0)); }
+  }
+  g.clearGroups();
+  return g;
+}
 // merge every plain-coloured mesh of a model into one; textured and two-sided parts stay as they are
 const BAKED = Lam({ vertexColors: true });
 export function bakeGroup(group) {
@@ -67,7 +79,7 @@ export function bakeGroup(group) {
   group.traverse(o => {
     if (!o.isMesh) return;
     const mat = o.material;
-    if (Array.isArray(mat) || mat.map || mat.side !== THREE.FrontSide || mat.isMeshBasicMaterial) {
+    if (Array.isArray(mat) || mat.map || mat.side !== THREE.FrontSide || mat.isMeshBasicMaterial || mat.isMeshStandardMaterial) {
       const k = new THREE.Mesh(o.geometry, mat); o.matrixWorld.decompose(k.position, k.quaternion, k.scale);
       k.castShadow = k.receiveShadow = true; out.add(k); return;
     }
@@ -181,10 +193,14 @@ function facade(style, floors, v) {
       x.fillStyle = '#cfd6dc'; x.fillRect(0, H - 10, W, 10);
       return;
     }
-    const wall = { cbd: '#fbfaf5', balcony: '#ffffff', old: '#f1e6cf', pastel: PASTEL[v % 4] }[style];
+    const wall = { cbd: '#fbfaf5', balcony: '#ffffff', old: '#f1e6cf', coral: '#d9ccb2', pastel: PASTEL[v % 4] }[style];
     x.fillStyle = wall; x.fillRect(0, 0, W, H);
     for (let i = 0; i < 10; i++) { x.fillStyle = `rgba(120,100,70,${0.02 + Math.random() * 0.04})`; x.fillRect(Math.random() * W, Math.random() * H, 6 + Math.random() * 30, 30 + Math.random() * 120); }
-    x.fillStyle = style === 'old' ? '#8a5a33' : style === 'pastel' ? '#ffffff' : blue; x.fillRect(0, 0, W, top - 8);
+    if (style === 'coral') for (let i = 0; i < 420; i++) { // coral-rag rubble showing through worn lime plaster
+      x.fillStyle = ['rgba(150,128,96,.35)', 'rgba(240,232,214,.5)', 'rgba(120,100,76,.25)'][i % 3];
+      x.beginPath(); x.ellipse(Math.random() * W, Math.random() * H, 3 + Math.random() * 9, 2 + Math.random() * 6, Math.random() * 3, 0, 7); x.fill();
+    }
+    x.fillStyle = isOld(style) ? '#8a5a33' : style === 'pastel' ? '#ffffff' : blue; x.fillRect(0, 0, W, top - 8);
     x.fillStyle = 'rgba(0,0,0,.12)'; x.fillRect(0, top - 8, W, 5);
     for (let f = 0; f < floors; f++) {
       const y = top + f * FH;
@@ -198,7 +214,7 @@ function facade(style, floors, v) {
         } else if (style === 'balcony') {
           x.fillStyle = '#27496d'; x.fillRect(cx + 4, y + 10, 30, 64);
           glass(x, cx + 7, y + 13, 24, 40, '#4a86b8', '#9fd0ea'); glass(x, cx + 40, y + 18, 26, 36);
-        } else if (style === 'old') {
+        } else if (isOld(style)) {
           x.fillStyle = '#5a3a22'; x.beginPath(); x.moveTo(cx + 8, y + 78); x.lineTo(cx + 8, y + 34); x.arc(cx + 34, y + 34, 26, Math.PI, 0); x.lineTo(cx + 60, y + 78); x.fill();
           x.strokeStyle = '#8a6a44'; x.lineWidth = 2; for (let s = 0; s < 6; s++) { x.beginPath(); x.moveTo(cx + 12, y + 36 + s * 7); x.lineTo(cx + 56, y + 36 + s * 7); x.stroke(); }
           x.fillStyle = wall; x.fillRect(cx + 33, y + 10, 2, 68);
@@ -210,7 +226,7 @@ function facade(style, floors, v) {
       }
       if (style === 'cbd') { x.fillStyle = blue; x.fillRect(0, y + 88, W, 6); }
     }
-    if (style === 'old') {
+    if (isOld(style)) {
       x.fillStyle = '#4a2e18'; x.beginPath(); x.moveTo(146, H); x.lineTo(146, gy + 44); x.arc(192, gy + 44, 46, Math.PI, 0); x.lineTo(238, H); x.fill();
       x.fillStyle = '#6b4423'; x.fillRect(154, gy + 46, 34, H); x.fillRect(196, gy + 46, 34, H);
       x.fillStyle = '#e0b04a'; for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) { x.beginPath(); x.arc(160 + c * 8 + (c > 1 ? 26 : 0), gy + 58 + r * 16, 2.4, 0, 7); x.fill(); }
@@ -231,6 +247,7 @@ function facade(style, floors, v) {
     x.fillStyle = sh; x.fillRect(0, 0, W, H);
   }));
 }
+const isOld = st => st === 'old' || st === 'coral';
 // A whole building as one template.  Its street face is at local x = -D/2 (the right-hand side of the road).
 const BW = 11, BD = 9;
 function building(style, floors, v) {
@@ -238,11 +255,15 @@ function building(style, floors, v) {
   return {
     h, obj: inst(`b${style}${floors}${v}`, () => {
       const g = new THREE.Group(), fx = -BD / 2, fh = 3.1;
-      const side = Lam({ map: facade(style, floors, v) }), roof = M(style === 'tower' ? 0xdfe5ea : 0xcfc9ba);
-      const b = new THREE.Mesh(G.box, [side, side, roof, roof, side, side]); b.scale.set(BD, h, BW); b.position.y = h / 2; b.castShadow = b.receiveShadow = true; g.add(b);
+      // the roof samples a small roof-coloured patch painted in the facade's top-left corner
+      const tex = facade(style, floors, v), cv = tex.image, x2 = cv.getContext('2d');
+      x2.setTransform(1, 0, 0, 1, 0, 0); x2.fillStyle = style === 'tower' ? '#dfe5ea' : '#cfc9ba'; x2.fillRect(0, 0, 6, 6); tex.needsUpdate = true;
+      const du = 1 / cv.width, dv = 1 / cv.height, full = [0, 0, 1, 1], roof = [du * 2, 1 - dv * 4, du * 4, 1 - dv * 2];
+      const b = new THREE.Mesh(cached(`bg${style}${floors}${v}`, () => atlasBox([full, full, roof, roof, full, full])), Lam({ map: tex }));
+      b.scale.set(BD, h, BW); b.position.y = h / 2; b.castShadow = b.receiveShadow = true; g.add(b);
       const blue = M(PAL.blue), white = M(0xfbfaf5), awn = style === 'pastel' ? M(BRIGHT[(v * 3) % BRIGHT.length]) : blue;
       // parapet and rooftop clutter
-      const cap = M(style === 'old' ? 0x8a5a33 : style === 'tower' ? 0xeef2f5 : style === 'pastel' ? 0xffffff : PAL.blue);
+      const cap = M(isOld(style) ? 0x8a5a33 : style === 'tower' ? 0xeef2f5 : style === 'pastel' ? 0xffffff : PAL.blue);
       m(G.box, cap, BD + 0.3, 0.35, 0.3, 0, h + 0.17, BW / 2, g); m(G.box, cap, BD + 0.3, 0.35, 0.3, 0, h + 0.17, -BW / 2, g);
       m(G.box, cap, 0.3, 0.35, BW + 0.3, fx, h + 0.17, 0, g); m(G.box, cap, 0.3, 0.35, BW + 0.3, -fx, h + 0.17, 0, g);
       if (style === 'tower') {
@@ -268,8 +289,12 @@ function building(style, floors, v) {
         m(G.box, white, 1.1, 0.14, 2.3, fx - 0.5, y, z, g); m(G.box, blue, 0.08, 0.9, 2.3, fx - 1.0, y + 0.5, z, g);
         m(G.box, blue, 1.0, 0.9, 0.08, fx - 0.5, y + 0.5, z - 1.12, g); m(G.box, blue, 1.0, 0.9, 0.08, fx - 0.5, y + 0.5, z + 1.12, g);
       }
-      if (style === 'old') { // carved wooden balcony and lanterns
-        const y = 1.6 + (floors - 1) * fh + 0.4, wood = M(0x6b4423), dark = M(0x4a2e18);
+      if (isOld(style)) { // carved door surround, balcony (wooden, or coral stone) and lanterns
+        const coral = style === 'coral', frame = M(coral ? 0xc9b894 : 0x5a3a22), brass = M(0xe0b04a, { emissive: 0x553300 });
+        for (const z of [-1.4, 1.4]) m(G.box, frame, 0.3, 3.0, 0.32, fx - 0.12, 1.5, z, g);
+        m(G.box, frame, 0.34, 0.36, 3.2, fx - 0.14, 3.15, 0, g); m(G.box, frame, 0.5, 0.12, 3.5, fx - 0.2, 3.4, 0, g);
+        for (let k = 0; k < 6; k++) m(G.sph, brass, 0.09, 0.09, 0.09, fx - 0.05, 0.6 + (k % 3) * 0.75, k < 3 ? -0.5 : 0.5, g);
+        const y = 1.6 + (floors - 1) * fh + 0.4, wood = M(coral ? 0xd5c6a5 : 0x6b4423), dark = M(coral ? 0xb7a682 : 0x4a2e18);
         m(G.box, wood, 1.2, 0.16, 5.8, fx - 0.55, y, 0, g); m(G.box, wood, 0.1, 1.1, 5.8, fx - 1.1, y + 0.6, 0, g);
         m(G.box, dark, 1.4, 0.14, 6.2, fx - 0.6, y + 2.5, 0, g);
         for (let k = 0; k < 5; k++) m(G.box, dark, 0.12, 2.4, 0.12, fx - 1.1, y + 1.25, -2.8 + k * 1.4, g);
@@ -282,13 +307,18 @@ function building(style, floors, v) {
 }
 
 // ---------- pickups ----------
-const GOLD = Lam({ color: 0xffc21a, emissive: 0x8a5a00 }), GOLD2 = Lam({ color: 0xffe07a, emissive: 0x8a6a10 });
-export function makeCoin() {
-  const g = new THREE.Group(), c = new THREE.Mesh(G.coin, GOLD); c.rotation.x = Math.PI / 2; g.add(c);
-  g.add(new THREE.Mesh(G.ring, GOLD2));
-  const i = new THREE.Mesh(G.coin, GOLD2); i.rotation.x = Math.PI / 2; i.scale.set(0.55, 1.3, 0.55); g.add(i);
-  return g;
+function tinted(geo, color) {
+  geo = geo.toNonIndexed(); const c = new THREE.Color(color), n = geo.attributes.position.count, a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) a.set([c.r, c.g, c.b], i * 3);
+  geo.setAttribute('color', new THREE.BufferAttribute(a, 3)); return geo;
 }
+const COIN_GEO = mergeGeometries([
+  tinted(new THREE.CylinderGeometry(0.36, 0.36, 0.07, 22).rotateX(Math.PI / 2), 0xffc21a),
+  tinted(new THREE.TorusGeometry(0.36, 0.045, 8, 24), 0xffe07a),
+  tinted(new THREE.CylinderGeometry(0.2, 0.2, 0.1, 18).rotateX(Math.PI / 2), 0xfff0a0),
+]);
+const COIN_MAT = Lam({ vertexColors: true, emissive: 0x7a5200 });
+export function makeCoin() { return new THREE.Mesh(COIN_GEO, COIN_MAT); } // no shadow: coins are many and small
 const halo = color => new THREE.Mesh(G.halo, cached('halo' + color, () => curveMat(new THREE.MeshBasicMaterial({ color }))));
 export function makeCup() { // kahawa tungu, served small and strong
   const g = new THREE.Group();
@@ -299,6 +329,15 @@ export function makeCup() { // kahawa tungu, served small and strong
   g.add(halo(PAL.sun));
   return g;
 }
+const DOME = new THREE.SphereGeometry(0.5, 18, 10, 0, Math.PI * 2, 0, Math.PI / 2);
+export function makeHelmetModel() { // bodaboda helmet, also worn by the runner while the shield lasts
+  const g = new THREE.Group();
+  m(DOME, M(0xd81e1e, { emissive: 0x330000 }), 0.64, 0.6, 0.7, 0, 0, 0, g);
+  m(G.box, M(0xffffff), 0.08, 0.3, 0.72, 0, 0.12, 0.02, g);
+  m(G.box, M(0x14181f), 0.5, 0.14, 0.08, 0, 0.08, -0.33, g);
+  return g;
+}
+export function makeHelmet() { const g = new THREE.Group(); g.add(makeHelmetModel()); g.add(halo(0x3ee6c4)); return g; }
 export function makeNdara() {
   const g = new THREE.Group(), s = new THREE.Group(); g.add(s);
   m(G.cyl, M(PAL.pink, { emissive: 0x4a0a20 }), 0.36, 0.08, 0.82, 0, 0, 0, s);
@@ -323,6 +362,15 @@ function kangaTex(i) {
   }));
 }
 const MATATU = [['#d81e5b', 'MOMBASA RAHA'], ['#12b5b0', 'PWANI EXPRESS'], ['#7b3fb3', 'BAMBURI SACCO']];
+function matatuFront(i) {
+  return cached('mf' + i, () => canvasTex(256, 256, (x, W, H) => {
+    const col = MATATU[i][0];
+    x.fillStyle = '#fbfaf5'; x.fillRect(0, 0, W, H); x.fillStyle = col; x.fillRect(0, 150, W, H);
+    glass(x, 14, 18, W - 28, 100, '#24384f', '#8fbcd8'); x.fillStyle = '#ffc21a'; x.fillRect(0, 130, W, 14);
+    x.fillStyle = '#1b2433'; x.fillRect(70, 168, 116, 46); x.fillStyle = '#fffbe0'; x.fillRect(10, 160, 48, 30); x.fillRect(W - 58, 160, 48, 30);
+    x.fillStyle = '#fff'; x.fillRect(84, 222, 88, 24); label(x, 'KDA 001M', 128, 234, 15, '#0d1b2a', 80);
+  }));
+}
 function matatuTex(i, rear) {
   return cached(`m${i}${rear}`, () => canvasTex(rear ? 256 : 512, 256, (x, W, H) => {
     const [col, text] = MATATU[i];
@@ -353,16 +401,21 @@ const OBST = {
     return { g, kind: 'block', half: 1.4 };
   },
   matatu(v) {
-    const g = new THREE.Group(), side = Lam({ map: matatuTex(v % 3, false) }), rear = Lam({ map: matatuTex(v % 3, true) });
-    const body = new THREE.Mesh(G.box, [side, side, M(0xfbfaf5), M(0x222222), rear, rear]);
+    const g = new THREE.Group(), i = v % 3;
+    // side | rear | front painted side by side into one 1024 x 256 texture
+    const atlas = cached('matAtlas' + i, () => canvasTex(1024, 256, x => {
+      x.drawImage(matatuTex(i, false).image, 0, 0); x.drawImage(matatuTex(i, true).image, 512, 0); x.drawImage(matatuFront(i).image, 768, 0);
+    }));
+    for (const z of [-2.21]) for (const s of [-0.75, 0.75]) m(G.box, M(0xfffbe0, { emissive: 0xbbbb88 }), 0.4, 0.2, 0.04, s, 0.95, z, g);
+    const sideR = [0, 0, 0.5, 1], white = [0.003, 0.985, 0.006, 0.99];
+    const body = new THREE.Mesh(cached('matGeo', () => atlasBox([sideR, sideR, white, white, [0.5, 0, 0.75, 1], [0.75, 0, 1, 1]])), cached('matMat' + i, () => Lam({ map: atlas })));
     body.scale.set(2.0, 1.9, 4.4); body.position.y = 1.3; body.castShadow = body.receiveShadow = true; g.add(body);
     R(M(0xfbfaf5), 1.9, 0.3, 4.3, 0.14, 0, 2.3, 0, g);                    // rounded roof
-    m(G.box, M(0x22252b), 1.5, 0.08, 2.4, 0, 2.5, 0.4, g);                // roof rack and luggage
-    R(M(0xe98a4b), 0.9, 0.4, 0.7, 0.1, -0.2, 2.74, 0.9, g); R(M(0x2f9e44), 0.7, 0.34, 0.9, 0.1, 0.25, 2.7, -0.1, g);
+    for (const x of [-0.8, 0.8]) m(G.box, M(0x22252b), 0.06, 0.08, 3.8, x, 2.5, 0, g); // roof rails; the roof itself is runnable
     R(M(0x22252b), 2.06, 0.22, 0.2, 0.06, 0, 0.5, 2.2, g);               // bumper
     for (const s of [-1, 1]) { m(G.box, M(0x22252b), 0.1, 0.22, 0.3, s * 1.06, 1.75, -1.7, g); R(M(0x22252b), 0.14, 0.34, 0.9, 0.06, s * 1.0, 0.58, 1.4, g); R(M(0x22252b), 0.14, 0.34, 0.9, 0.06, s * 1.0, 0.58, -1.4, g); }
     for (const z of [-1.4, 1.4]) { wheel(g, -0.95, 0.38, z, 0.38, 0.28); wheel(g, 0.95, 0.38, z, 0.38, 0.28); }
-    return { g, kind: 'block', half: 2.3 };
+    return { g, kind: 'block', half: 2.3, top: 2.5 };
   },
   cart() { // mkokoteni loaded with madafu
     const g = new THREE.Group(), wood = M(PAL.wood), light = M(0x9a6a3a);
@@ -394,10 +447,57 @@ const OBST = {
     return { g, kind: 'high', half: 0.3 };
   },
 };
-export function buildObstacle(type, rnd) {
-  const v = Math.floor(rnd() * 4), meta = cached('ob:' + type + v, () => { const o = OBST[type](v); return { tpl: bakeGroup(o.g), kind: o.kind, half: o.half }; });
-  return { mesh: meta.tpl.clone(), kind: meta.kind, half: meta.half };
+function stripes(text, a, b, textColor) { // diagonal hazard stripes with a white plate in the middle
+  return canvasTex(256, 64, (x, W, H) => {
+    for (let k = -1; k < 9; k++) { x.fillStyle = k % 2 ? b : a; x.beginPath(); x.moveTo(k * 32 - 16, H); x.lineTo(k * 32 + 16, 0); x.lineTo(k * 32 + 48, 0); x.lineTo(k * 32 + 16, H); x.fill(); }
+    if (text) { x.fillStyle = '#ffffff'; x.fillRect(58, 10, 140, 44); x.strokeStyle = '#0d1b2a'; x.lineWidth = 3; x.strokeRect(58, 10, 140, 44); label(x, text, 128, 33, 30, textColor, 128); }
+  });
 }
+Object.assign(OBST, {
+  barrier() { // HAPANA / HALT road barrier: jump it
+    const g = new THREE.Group(), face = cached('hapM', () => Lam({ map: stripes('HAPANA', '#d81e1e', '#ffffff', '#c8102e') })), w = M(0xffffff);
+    const board = new THREE.Mesh(G.box, [w, w, w, w, face, face]); board.scale.set(2.1, 0.5, 0.08); board.position.y = 0.78; board.castShadow = true; g.add(board);
+    for (const x of [-0.85, 0.85]) for (const z of [-0.22, 0.22]) m(G.box, M(0xd9d9d9), 0.07, 1.05, 0.07, x, 0.5, z, g).rotation.x = z > 0 ? 0.22 : -0.22;
+    m(G.sph, M(0xff9a1a, { emissive: 0xcc5500 }), 0.16, 0.16, 0.16, -0.85, 1.12, 0, g);
+    return { g, kind: 'low', half: 0.4 };
+  },
+  cones() { // construction cones across the lane: jump them
+    const g = new THREE.Group();
+    for (const x of [-0.75, 0, 0.75]) {
+      m(G.box, M(0x17191d), 0.5, 0.06, 0.5, x, 0.03, 0, g);
+      m(G.cone, M(0xff6a00), 0.42, 0.85, 0.42, x, 0.48, 0, g);
+      m(G.cyl, M(0xffffff), 0.27, 0.12, 0.27, x, 0.55, 0, g);
+    }
+    m(G.box, M(0xffffff), 1.7, 0.06, 0.06, 0, 0.72, 0, g);
+    return { g, kind: 'low', half: 0.35 };
+  },
+  sign() { // overhead PUNGUZA MWENDO board: slide under it
+    const g = new THREE.Group(), steel = M(0x8d99a6);
+    for (const x of [-1.15, 1.15]) m(G.cyl, steel, 0.12, 3.0, 0.12, x, 1.5, 0, g);
+    const tex = cached('punguza', () => canvasTex(256, 96, (x, W, H) => {
+      x.fillStyle = '#ffc21a'; x.fillRect(0, 0, W, H); x.strokeStyle = '#0d1b2a'; x.lineWidth = 8; x.strokeRect(4, 4, W - 8, H - 8);
+      label(x, 'PUNGUZA', W / 2, 32, 34, '#0d1b2a', W - 30); label(x, 'MWENDO', W / 2, 68, 30, '#c8102e', W - 30);
+    }));
+    const y = M(0xffc21a), board = new THREE.Mesh(G.box, [y, y, y, y, cached('pgM', () => Lam({ map: tex })), y]);
+    board.scale.set(2.3, 0.95, 0.1); board.position.y = 2.2; board.castShadow = true; g.add(board);
+    return { g, kind: 'high', half: 0.3 };
+  },
+  ramp() { // a wooden ramp up onto a line of parked matatus
+    const g = new THREE.Group(), L = 5, H = 2.5, a = Math.atan2(H, L), len = Math.hypot(L, H), wood = M(0x9a6a3a);
+    const deck = m(G.box, wood, 2.1, 0.16, len, 0, H / 2, 0, g); deck.rotation.x = a;
+    for (const x of [-0.98, 0.98]) { const e = m(G.box, M(0xffc21a), 0.14, 0.2, len, x, H / 2 + 0.06, 0, g); e.rotation.x = a; }
+    for (let k = 0; k < 3; k++) { const z = 1.6 - k * 1.6, h = H * (L / 2 - z) / L; if (h > 0.2) for (const x of [-0.85, 0.85]) m(G.box, M(0x6b4423), 0.14, h, 0.14, x, h / 2, z, g); }
+    return { g, kind: 'ramp', half: L / 2, top: H };
+  },
+});
+function obstacleMeta(type, v) {
+  return cached('ob:' + type + v, () => { const o = OBST[type](v); return { tpl: bakeGroup(o.g), kind: o.kind, half: o.half, top: o.top || 0 }; });
+}
+export function buildObstacle(type, rnd) {
+  const meta = obstacleMeta(type, Math.floor(rnd() * 4));
+  return { mesh: meta.tpl.clone(), kind: meta.kind, half: meta.half, top: meta.top };
+}
+
 
 // ---------- props ----------
 const MODEL = {
@@ -454,16 +554,20 @@ const MODEL = {
     return g;
   },
   tusks() { // the Moi Avenue pembe
-    const g = new THREE.Group(), mat = M(0xf7f4e8, { emissive: 0x3a3a34 });
+    const g = new THREE.Group(), mat = curveMat(new THREE.MeshStandardMaterial({ color: 0xeef1f5, metalness: 0.82, roughness: 0.24 }));
+    const band = curveMat(new THREE.MeshStandardMaterial({ color: 0xd9a830, metalness: 0.9, roughness: 0.3 }));
     for (const s of [1, -1]) {
-      const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(s * 5.6, 0, 0), new THREE.Vector3(s * 5.6, 10.5, 0), new THREE.Vector3(s * -3.4, 10.6, 0));
+      const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(s * 5.9, 0, 0), new THREE.Vector3(s * 5.9, 12.2, 0), new THREE.Vector3(s * -3.8, 11.8, 0));
       const N = 24, RS = 10, geo = new THREE.TubeGeometry(curve, N, 1, RS, false), pos = geo.attributes.position, p = new THREE.Vector3();
       for (let i = 0; i <= N; i++) {
-        const c = curve.getPointAt(i / N), rad = 1.05 * Math.pow(1 - i / N, 0.8) + 0.1;
+        const c = curve.getPointAt(i / N), rad = 1.25 * Math.pow(1 - i / N, 0.8) + 0.12;
         for (let j = 0; j <= RS; j++) { const k = i * (RS + 1) + j; p.fromBufferAttribute(pos, k).sub(c).multiplyScalar(rad).add(c); pos.setXYZ(k, p.x, p.y, p.z); }
       }
       geo.computeVertexNormals();
-      for (const dz of [0, -2.6]) { m(geo, mat, 1, 1, 1, 0, 0, dz + (s > 0 ? 0 : -0.6), g); m(G.cyl, M(0xcfc9ba), 2.6, 0.5, 2.6, s * 5.6, 0.25, dz, g); }
+      for (const dz of [0, -3.0]) {
+        m(geo, mat, 1, 1, 1, 0, 0, dz + (s > 0 ? 0 : -0.7), g);
+        m(G.cyl, M(0xcfc9ba), 3.0, 0.6, 3.0, s * 5.9, 0.3, dz, g); m(G.cyl, band, 2.7, 0.35, 2.7, s * 5.9, 1.4, dz + (s > 0 ? 0 : -0.7), g);
+      }
     }
     return g;
   },
@@ -491,6 +595,41 @@ const MODEL = {
     R(M(0xfbfaf5), 1.5, 0.12, 3.3, 0.05, 0, 2.55, 0, g); m(G.box, M(0x9fd0f0), 0.05, 1.5, 2.8, 0.52, 1.5, 0, g); m(G.box, M(0x9a6a3a), 0.4, 0.08, 2.4, 0.2, 0.55, 0, g);
     return g;
   },
+  deckEdge() { // Nyali Bridge: concrete deck edge, beam, pier and jersey parapet (built for the right-hand side)
+    const g = new THREE.Group(), conc = M(0xc9ccd0), dark = M(0x9aa0a6);
+    m(G.box, conc, 3.2, 0.5, CHUNK, 1.6, -0.24, 0, g);
+    m(G.box, dark, 3.6, 0.9, CHUNK, 1.4, -0.9, 0, g);
+    m(G.box, M(PAL.pave), 0.9, 0.22, CHUNK, 0.45, 0.11, 0, g);
+    m(G.box, conc, 0.62, 0.42, CHUNK, 1.25, 0.21, 0, g); m(G.box, conc, 0.3, 0.62, CHUNK, 1.25, 0.72, 0, g);
+    m(G.box, M(PAL.blue), 0.32, 0.08, CHUNK, 1.25, 1.06, 0, g);
+    m(G.box, dark, 2.2, 3.0, 2.0, 1.4, -2.6, 0, g);
+    return g;
+  },
+  carriageway() { // the second, oncoming carriageway of Nyali Bridge, on the left
+    const g = new THREE.Group(), conc = M(0xc9ccd0), dark = M(0x9aa0a6);
+    m(G.box, M(0x4a4e56), 8.4, 0.5, CHUNK, -13, -0.24, 0, g);
+    m(G.box, dark, 8.4, 0.9, CHUNK, -13, -0.9, 0, g);
+    for (const z of [-3, 3]) m(G.box, M(0xf6f3e6), 0.14, 0.02, 3, -13, 0.02, z, g);
+    for (const x of [-8.8, -17.2]) { m(G.box, conc, 0.6, 0.42, CHUNK, x, 0.21, 0, g); m(G.box, conc, 0.3, 0.62, CHUNK, x, 0.72, 0, g); }
+    m(G.box, dark, 2.4, 3.0, 2.0, -13, -2.6, 0, g);
+    return g;
+  },
+  tarp(v) { // striped market awning over the sidewalk, leaning down toward the road (+x is the wall side)
+    const g = new THREE.Group(), col = M([0xd81e5b, 0x12b5b0, 0xff7a3d, 0x2f9e44][v % 4]), white = M(0xfff8ea);
+    for (let k = 0; k < 10; k++) { const b = m(G.box, k % 2 ? white : col, 3.1, 0.05, (CHUNK - 1) / 10, 0, 0, -CHUNK / 2 + 0.5 + (k + 0.5) * (CHUNK - 1) / 10, g); b.position.set(1.1, 3.75, b.position.z); b.rotation.z = 0.2; }
+    for (const z of [-5.2, 0, 5.2]) m(G.cyl, M(0x8a6a44), 0.08, 3.5, 0.08, -0.35, 1.75, z, g);
+    return g;
+  },
+  lanterns() { // a string of lanterns across an Old Town alley
+    const g = new THREE.Group(), glow = M(0xffd27a, { emissive: 0xcc8a22 });
+    for (let k = 0; k <= 10; k++) {
+      const x = -5 + k, y = 6.0 - Math.sin(k / 10 * Math.PI) * 0.8;
+      m(G.box, M(0x2a2018), 1.02, 0.03, 0.03, x, y, 0, g).rotation.z = -Math.cos(k / 10 * Math.PI) * 0.25;
+      if (k % 2) { m(G.box, M(0x5a3a22), 0.3, 0.06, 0.3, x, y - 0.25, 0, g); m(G.box, glow, 0.24, 0.36, 0.24, x, y - 0.48, 0, g); }
+    }
+    return g;
+  },
+  cartProp() { return OBST.cart().g; },
   zebra() { const g = new THREE.Group(); for (let k = 0; k < 7; k++) m(G.box, M(0xf6f3e6), 0.6, 0.02, 3, -3 + k, 0.012, 0, g); return g; },
 };
 function gantry(g, z, name) {
@@ -575,7 +714,9 @@ export function buildChunk(i, zone, info, rnd) {
     const p = put(g, hooks.bystander(rnd), x, 0.16, z, -side * Math.PI / 2 + (rnd() - 0.5) * 0.9);
     p.userData.streetPerson = true; p.userData.phase = rnd() * Math.PI * 2;
   };
+  const vehicle = (type, x, z, ry) => put(g, obstacleMeta(type, ri(4)).tpl.clone(), x, 0, z, ry);
   if (['MARIKITI', 'MJI WA KALE', 'LIKONI FERRY'].includes(zone.name) && zc % 3 === 0) bunting(g, i);
+  if (zone.name === 'MJI WA KALE' && zc % 3 === 1) put(g, inst('lanterns', MODEL.lanterns), 0, 0, 2);
   if (i === 1) put(g, streetSign('LIKONI FERRY', 'MOMBASA • KARIBU PWANI'), 5.1, 0, 1, -.25);
   if (info.first && i > 0) { gantry(g, CHUNK / 2 - 0.5, zone.name); put(g, inst('zebra', MODEL.zebra), 0, 0, CHUNK / 2 - 3); }
   if (zone.name === 'MOI AVENUE' && zc % 12 === 1) put(g, inst('tusks', MODEL.tusks), 0, 0, 0);
@@ -584,23 +725,28 @@ export function buildChunk(i, zone, info, rnd) {
     const palm = (x, z) => put(g, inst('palm' + ri(4), () => MODEL.palm(ri(4))), X(x), 0, z, rnd() * 6);
     const dhow = (lo, span) => put(g, inst('dhow' + ri(3), () => MODEL.dhow(ri(3))), X(lo + rnd() * span), -1.05, rnd() * 10 - 5, (rnd() - 0.5) * 1.2);
     const lamp = x => put(g, inst('lamp', MODEL.lamp), X(x), 0, 0, face);
-    if (kind === 'bridge') {
-      m(G.box, M(PAL.pave), 0.9, 0.5, CHUNK, X(4.45), 0.0, 0, g);
-      if (side > 0) m(G.box, M(0x9aa3ad), 9.8, 1.4, 1.6, 0, -0.85, 0, g);
-      put(g, inst('railing', MODEL.railing), X(4.75), 0.25, 0);
-      if (i % 2 === 0) { lamp(4.7); m(G.box, M(PAL.blue), 0.3, 7, 0.3, X(5.0), 2.5, 3, g); }
-      if (rnd() < 0.5) dhow(14, 50);
+    const palmRow = x => palm(x + rnd() * 0.4, (i % 2 ? 3.2 : -3.2) * side + (rnd() - 0.5)); // palms lining the coast roads
+    if (kind === 'bridge') { // Nyali Bridge: a concrete deck over the creek, oncoming carriageway on the left
+      put(g, inst('deckEdge', MODEL.deckEdge), X(4), 0, 0, face);
+      if (i % 2 === 0) lamp(5.25);
+      if (side < 0) {
+        put(g, inst('carriageway', MODEL.carriageway), 0, 0, 0);
+        if (rnd() < 0.55) vehicle(rnd() < 0.6 ? 'tuktuk' : 'matatu', -11.2 - ri(2) * 3.4, rnd() * 6 - 3, Math.PI);
+        if (i % 2 === 0) put(g, inst('lamp', MODEL.lamp), -17.2, 0, 0, 0);
+      }
+      if (rnd() < 0.5) dhow(side < 0 ? 24 : 14, 40);
       continue;
     }
     if (kind === 'beach' || kind === 'palms') {
       const w = kind === 'beach' ? 10 : 60;
       ground(g, PAL.sand, w, X(4 + w / 2));
-      const n = kind === 'beach' ? 1 + (rnd() < 0.4) : 2 + ri(2);
-      for (let k = 0; k < n; k++) palm(5.5 + rnd() * (kind === 'beach' ? 7 : 16), rnd() * 10 - 5);
+      palmRow(4.9);
+      const n = kind === 'beach' ? (rnd() < 0.5 ? 1 : 0) : 1 + ri(2);
+      for (let k = 0; k < n; k++) palm(6.5 + rnd() * (kind === 'beach' ? 6 : 16), rnd() * 10 - 5);
       if (kind === 'beach') {
         if (zc % 4 === 1) put(g, inst('camel', MODEL.camel), X(8 + rnd() * 3), 0, rnd() * 6 - 3, rnd() * 6);
         if (rnd() < 0.6) dhow(20, 40);
-        if (rnd() < 0.5) person(X(5 + rnd() * 2), rnd() * 8 - 4, side);
+        if (rnd() < 0.5) person(X(5.6 + rnd() * 2), rnd() * 8 - 4, side);
       } else {
         if (zc % 3 === 1) put(g, inst('hut', MODEL.hut), X(11 + rnd() * 4), 0, 0);
         if (zc % 3 === 2) { const b = building(zc % 2 ? 'tower' : 'balcony', 5, i % 3); put(g, b.obj, X(26), 0, 0, face); }
@@ -609,63 +755,71 @@ export function buildChunk(i, zone, info, rnd) {
     }
     const sw = kind === 'old' ? 1.1 : 2;
     const walk = m(G.box, cached('walk', () => Lam({ map: paveTex() })), sw, 0.16, CHUNK, X(4 + sw / 2), 0.08, 0, g); walk.castShadow = false;
-    if (kind === 'sea') {
+    if (kind === 'sea') { // seafront: railing, palms and dhows on the Indian Ocean
       put(g, inst('railing', MODEL.railing), X(5.9), 0.16, 0);
       if (i % 2 === 0) lamp(5.6);
       if (zone.name === 'LIKONI FERRY' && zc === 2) put(g, inst('ferry', MODEL.ferry), X(15), -1.0, 0, face);
-      else if (rnd() < 0.55) dhow(16, 50);
-      if (rnd() < 0.4) palm(5.2, rnd() * 8 - 4);
+      else if (rnd() < 0.6) dhow(16, 50);
+      palmRow(5.25);
       if (rnd() < 0.3) put(g, inst('bench', MODEL.bench), X(5.4), 0.16, rnd() * 6 - 3, face);
-      if (rnd() < 0.7) person(X(4.9), rnd() * 8 - 4, side);
+      if (rnd() < 0.7) person(X(4.8), rnd() * 8 - 4, side);
       continue;
     }
     ground(g, kind === 'market' ? 0xd6b98a : PAL.pave, 50, X(4 + sw + 25));
-    if (kind === 'fort') {
+    if (kind === 'fort') { // Fort Jesus: high coral-stone ramparts
       const stone = cached('stoneM', () => Lam({ map: stoneTex() }));
-      const tower = zc % 5 === 2, h = tower ? 11 : 7.5;
+      const tower = zc % 5 === 2, h = tower ? 14 : 10;
       m(G.box, stone, tower ? 9 : 6, h, CHUNK + 0.1, X(tower ? 10.5 : 10), h / 2, 0, g);
-      for (let k = 0; k < 4; k++) m(G.box, stone, tower ? 9.2 : 6.2, 0.9, 1.5, X(tower ? 10.5 : 10), h + 0.45, -4.5 + k * 3, g);
+      m(G.box, stone, 1.2, 1.4, CHUNK + 0.1, X(7.3), 0.7, 0, g); // sloping plinth at the foot of the wall
+      for (let k = 0; k < 4; k++) m(G.box, stone, tower ? 9.2 : 6.2, 1.1, 1.5, X(tower ? 10.5 : 10), h + 0.55, -4.5 + k * 3, g);
       if (tower) {
         m(G.cyl, M(0x444444), 0.1, 4, 0.1, X(8), h + 2.9, 0, g);
         const flag = new THREE.Mesh(G.plane, cached('flagM', () => Lam({ map: flagTex(), side: THREE.DoubleSide })));
         flag.scale.set(2.4, 1.6, 1); flag.position.set(X(8) + 1.2, h + 4.1, 0); g.add(flag);
       }
-      if (rnd() < 0.5) palm(5.4, rnd() * 8 - 4);
-      if (rnd() < 0.7) person(X(4.9), rnd() * 8 - 4, side);
+      palmRow(5.3);
+      if (rnd() < 0.6) person(X(4.8), rnd() * 8 - 4, side);
       continue;
     }
     // streets with buildings: city, market, old town
-    const x0 = 4 + sw + 0.2;
+    const x0 = 4 + sw + 0.2, r = rnd();
     if (kind === 'old' && zc % 6 === 3 && side > 0) put(g, inst('mosque', MODEL.mosque), x0, 0, 0);
     else {
-      const modern = zone.name === 'MOI AVENUE' ? 0.12 : 0.04;
-      const style = kind === 'old' ? 'old' : kind === 'market' ? 'pastel' : rnd() < modern ? 'tower' : rnd() < 0.55 ? 'cbd' : 'balcony';
-      const floors = style === 'tower' ? 6 + ri(4) : kind === 'old' ? 2 + ri(2) : 2 + ri(3);
+      const style = kind === 'old' ? (r < 0.45 ? 'coral' : 'old')
+        : kind === 'market' ? (r < 0.25 ? 'old' : 'pastel')
+          : zone.name === 'MOI AVENUE' ? (r < 0.14 ? 'tower' : r < 0.38 ? 'old' : r < 0.6 ? 'pastel' : r < 0.82 ? 'cbd' : 'balcony')
+            : r < 0.05 ? 'tower' : r < 0.55 ? 'cbd' : 'balcony';
+      const floors = style === 'tower' ? 6 + ri(4) : isOld(style) ? 2 + ri(2) : 2 + ri(3);
       const b = building(style, floors, ri(3));
       put(g, b.obj, X(x0 + BD / 2 + (kind === 'market' ? 1.2 : 0) + (style === 'tower' ? 1.4 : 0)), 0, 0, face);
     }
-    if (kind === 'market') { for (const z of rnd() < 0.7 ? [-3, 3] : [-3]) { put(g, inst('stall' + ri(6), () => MODEL.stall(ri(8))), X(5.2), 0, z, face + Math.PI); person(X(6.15), z, side); } }
-    else {
-      if (i % 3 === 0 && kind === 'city') lamp(5.7);
-      const stall = zc % 2 === 0 && kind !== 'old'; // a stall takes the sidewalk, so no other props beside it
-      if (kind === 'city' && !stall) {
-        const r = rnd();
-        if (r < 0.3) palm(5.4, rnd() * 8 - 4);
-        else if (r < 0.42) put(g, inst('stage', MODEL.stage), X(5.3), 0.16, 2, face);
-        else if (r < 0.55) put(g, inst('bin', MODEL.bin), X(5.6), 0.16, rnd() * 8 - 4);
-        else if (r < 0.65) put(g, inst('bench', MODEL.bench), X(5.5), 0.16, rnd() * 6 - 3, face);
-      }
-      if (stall) {
-        put(g, neighbourhoodStall(i % 3), X(5.6), .16, -2, face).scale.setScalar(0.9); // clear of the shop fronts at x 6.2
-        person(X(5.95), -2, side);
-      }
-      if (zc % 4 === 1) {
-        const names = kind === 'old' ? ['MJI WA KALE', 'OLD TOWN • MOMBASA'] : kind === 'city' && zone.name === 'LIKONI FERRY' ? ['MAMA FATUMA', 'MAHAMRI • CHAI • MADAFU'] : ['MOMBASA RAHA', 'KARIBU PWANI'];
-        put(g, streetSign(...names, i % 2 ? PAL.sea : PAL.blue), X(5.4), 0, 4, -side * .35);
-      }
-      const n = Math.floor(rnd() * 2.2);
-      for (let k = 0; k < n; k++) person(X(4.4 + rnd() * (sw - 0.6)), rnd() * 10 - 5, side);
+    if (kind === 'market') { // Marikiti: awnings, umbrellas, stalls and parked fruit carts
+      put(g, inst('tarp' + (i % 4), () => MODEL.tarp(i % 4)), X(4.6), 0, 0, face);
+      const both = rnd() < 0.6;
+      for (const z of both ? [-3, 3] : [-3]) { put(g, inst('stall' + ri(6), () => MODEL.stall(ri(8))), X(5.2), 0, z, face + Math.PI); person(X(6.15), z, side); }
+      if (!both) put(g, inst('cartProp', MODEL.cartProp), X(5.1), 0.16, 3.2, face + Math.PI / 2);
+      continue;
     }
+    if (i % 3 === 0 && kind === 'city') lamp(5.7);
+    const stall = zc % 2 === 0 && kind !== 'old'; // a stall takes the sidewalk, so no other props beside it
+    if (zone.name === 'MOI AVENUE') palm(5.35, side > 0 ? 4.2 : 3.6);
+    if (kind === 'city' && !stall) {
+      const p = rnd();
+      if (p < 0.3) palm(5.4, rnd() * 8 - 4);
+      else if (p < 0.42) put(g, inst('stage', MODEL.stage), X(5.3), 0.16, 2, face);
+      else if (p < 0.55) put(g, inst('bin', MODEL.bin), X(5.6), 0.16, rnd() * 8 - 4);
+      else if (p < 0.65) put(g, inst('bench', MODEL.bench), X(5.5), 0.16, rnd() * 6 - 3, face);
+    }
+    if (stall) {
+      put(g, neighbourhoodStall(i % 3), X(5.6), .16, -2, face).scale.setScalar(0.9); // clear of the shop fronts at x 6.2
+      person(X(5.95), -2, side);
+    }
+    if (zc % 4 === 1) {
+      const names = kind === 'old' ? ['MJI WA KALE', 'OLD TOWN • MOMBASA'] : kind === 'city' && zone.name === 'LIKONI FERRY' ? ['MAMA FATUMA', 'MAHAMRI • CHAI • MADAFU'] : ['MOMBASA RAHA', 'KARIBU PWANI'];
+      put(g, streetSign(...names, i % 2 ? PAL.sea : PAL.blue), X(5.4), 0, 4, -side * .35);
+    }
+    const n = Math.floor(rnd() * 2.2);
+    for (let k = 0; k < n; k++) person(X(4.4 + rnd() * (sw - 0.6)), rnd() * 10 - 5, side);
   }
   return g;
 }

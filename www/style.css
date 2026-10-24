@@ -133,3 +133,7 @@ svg { width: 1em; height: 1em; display: block; flex: none; }
   .how div { padding: 5px 2px; } .story { font-size: 11px; margin-bottom: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .play { animation: none; } }
+
+/* Power-ups: kahawa (speed + magnet) and the bodaboda helmet shield */
+.boost + .boost { margin-top: 6px; }
+.boost.shield i { background: linear-gradient(90deg, #3ee6c4, #12b5b0); }
