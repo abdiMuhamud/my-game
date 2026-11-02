@@ -23,18 +23,22 @@
     <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 21V4M6 10l6-6 6 6" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
     <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 3v17M6 14l6 6 6-6" stroke="currentColor" stroke-width="2.600" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
     <symbol id="i-trophy" viewBox="0 0 24 24"><path d="M7 3h10v5a5 5 0 0 1-10 0V3zM7 5H3v2a4 4 0 0 0 4 4M17 5h4v2a4 4 0 0 1-4 4M12 13v4M8 21h8M9.500 17h5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="M12 2.5l2.900 6.100 6.600.800-4.900 4.500 1.300 6.600L12 17.200 6.100 20.500l1.300-6.600L2.500 9.400l6.600-.800z" fill="currentColor" stroke="#0d1b2a" stroke-width="1.400" stroke-linejoin="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2.500" fill="currentColor"/><path d="M8 10V7a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2.400" fill="none"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 4l-8 8 8 8" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
+    <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2" fill="none"/><path d="M3 12h18M12 3c3 3.500 3 14.500 0 18M12 3c-3 3.500-3 14.500 0 18" stroke="currentColor" stroke-width="1.800" fill="none"/></symbol>
   </defs>
 </svg>
 
 <canvas id="c"></canvas>
 <div id="vignette"></div>
 
-<div id="loading"><div class="logo">MWIZI!</div><div class="loadbar"><i id="loadFill"></i></div><span>Mombasa inapakia…</span></div>
+<div id="loading"><div class="logo">MWIZI!</div><div class="loadbar"><i id="loadFill"></i></div><span data-i18n="loading">Mombasa inapakia…</span></div>
 
 <div id="hud" class="hidden">
   <div class="top">
-    <button class="ibtn" id="btnPause" aria-label="Simamisha"><svg><use href="#i-pause"/></svg></button>
-    <div class="zone"><small>Kituo kijacho</small><b id="zoneName">MOI AVENUE</b><i id="zoneDist">420 m</i></div>
+    <button class="ibtn" id="btnPause" aria-label="Pause"><svg><use href="#i-pause"/></svg></button>
+    <div class="zone"><small id="zoneHint">Kituo kijacho</small><b id="zoneName">MOI AVENUE</b><i id="zoneDist">420 m</i></div>
     <div class="stats">
       <div class="pill"><svg><use href="#i-coin"/></svg><span id="cash">0</span></div>
       <div class="pill mult" id="mult">x1</div>
@@ -45,15 +49,17 @@
     <div class="bar"><i id="gapFill"></i><em id="gapHim"></em></div>
     <b id="gapText">16 m</b>
   </div>
-  <div class="boost hidden" id="boost"><i id="boostFill"></i><span>KAHAWA: KASI + SUMAKU</span></div>
-  <div class="boost shield hidden" id="shieldBar"><i id="shieldFill"></i><span>KOFIA YA BODA</span></div>
+  <div class="boost hidden" id="boost"><i id="boostFill"></i><span data-i18n="boost">KAHAWA: KASI + SUMAKU</span></div>
+  <div class="boost shield hidden" id="shieldBar"><i id="shieldFill"></i><span data-i18n="shield">KOFIA YA BODA</span></div>
+  <div class="boost ride hidden" id="rideBar"><i id="rideFill"></i><span data-i18n="ride">NYUMA YA TUKTUK</span></div>
 </div>
 
 <div id="tag" class="hidden"><span>KIBAKA</span><b id="tagDist">16m</b></div>
 <div id="shout"></div>
-<button id="btnThrow" class="hidden" aria-label="Rusha ndara"><svg><use href="#i-ndara"/></svg><i id="throwN">1</i></button>
+<button id="btnThrow" class="hidden" aria-label="Throw"><svg><use href="#i-ndara"/></svg><i id="throwN">1</i></button>
 
 <div id="menu" class="screen hidden">
+  <button class="langbtn" data-lang-toggle><svg><use href="#i-globe"/></svg><span data-i18n="lang">English</span></button>
   <div class="head">
     <div class="edition">KARIBU PWANI · KENYA</div>
     <h1 class="logo">MWIZI!</h1>
@@ -61,57 +67,103 @@
     <div class="route">LIKONI FERRY <span>→</span> BAMBURI BEACH</div>
   </div>
   <div class="foot">
-    <p class="story">Kibaka amenyakua kikapu cha Mama Fatuma pale Likoni Ferry. Mkimbize, okota pesa, umshike!</p>
+    <p class="story" data-i18n="story"></p>
     <div class="how">
-      <div><svg><use href="#i-swipe-h"/></svg>Badili njia</div>
-      <div><svg><use href="#i-up"/></svg>Ruka</div>
-      <div><svg><use href="#i-down"/></svg>Teleza</div>
-      <div><svg><use href="#i-ndara"/></svg>Rusha ndara</div>
+      <div><svg><use href="#i-swipe-h"/></svg><span data-i18n="how_lane"></span></div>
+      <div><svg><use href="#i-up"/></svg><span data-i18n="how_jump"></span></div>
+      <div><svg><use href="#i-down"/></svg><span data-i18n="how_slide"></span></div>
+      <div><svg><use href="#i-ndara"/></svg><span data-i18n="how_throw"></span></div>
     </div>
-    <button class="play" id="btnStart"><svg><use href="#i-play"/></svg>TWENDE MBIO!</button>
-    <div class="best"><svg><use href="#i-trophy"/></svg>Rekodi yako <b>KSh <span id="best">0</span></b></div>
+    <button class="play" id="btnStart"><svg><use href="#i-play"/></svg><span data-i18n="play">CHEZA</span></button>
+    <button class="big alt endless" id="btnEndless"><span data-i18n="endless"></span></button>
+    <div class="best"><svg><use href="#i-trophy"/></svg><span data-i18n="best"></span> <b>KSh <span id="best">0</span></b></div>
+  </div>
+</div>
+
+<div id="map" class="mapscreen hidden">
+  <div class="maphead">
+    <button class="ibtn" id="btnMapBack" aria-label="Back"><svg><use href="#i-back"/></svg></button>
+    <div><h2 data-i18n="map_title"></h2><small data-i18n="map_sub"></small></div>
+    <button class="langbtn small" data-lang-toggle><svg><use href="#i-globe"/></svg><span data-i18n="lang"></span></button>
+  </div>
+  <div class="mapwrap">
+    <svg class="island" viewBox="0 0 360 480" preserveAspectRatio="xMidYMid meet">
+      <defs><pattern id="waves" width="24" height="12" patternUnits="userSpaceOnUse"><path d="M0 8q6-6 12 0t12 0" stroke="#ffffff55" stroke-width="2" fill="none"/></pattern></defs>
+      <rect width="360" height="480" fill="#1fb3c4"/><rect width="360" height="480" fill="url(#waves)"/>
+      <path d="M0 0h360v120q-40 10-70 40q-30-10-60 10q-20-40-80-30q-60 0-90 30q-30-10-60-5z" fill="#f3e0ad"/>
+      <path d="M0 0h360v100q-50 10-80 30q-30-8-55 6q-25-30-85-24q-60 4-90 28q-30-8-50-4z" fill="#8fcf7a"/>
+      <path d="M0 440q60-30 120-10q50 12 100-6q70-20 140 6v50h-360z" fill="#f3e0ad"/>
+      <path d="M0 455q60-26 120-10q50 12 100-6q70-18 140 6v35h-360z" fill="#8fcf7a"/>
+      <path d="M150 170q45-30 95-8q40 20 45 70q4 60-30 105q-30 40-80 48q-55 6-85-30q-30-35-25-95q6-60 80-90z" fill="#f6e7bf" stroke="#e2c98d" stroke-width="3"/>
+      <path d="M152 178q42-26 90-6q36 18 40 64q3 56-29 98q-28 36-74 43q-50 6-78-26q-27-32-23-88q6-56 74-85z" fill="#bfe3a6"/>
+      <path id="trail" d="M168 430L172 300L222 262L92 330L258 182L292 74" fill="none" stroke="#ffffffcc" stroke-width="4" stroke-dasharray="2 10" stroke-linecap="round"/>
+      <g font-family="Lilita One, sans-serif" font-size="11" fill="#0d1b2a" opacity=".55">
+        <text x="40" y="350">KILINDINI</text><text x="268" y="300">BAHARI HINDI</text><text x="150" y="470">LIKONI</text><text x="250" y="60">BAMBURI</text>
+      </g>
+    </svg>
+    <div id="pins"></div>
+  </div>
+  <div class="levelcard hidden" id="levelCard">
+    <div class="lvltop"><b id="lvlNum">Kiwango 1</b><div class="stars" id="lvlStars"></div></div>
+    <h3 id="lvlTitle">Likoni hadi Moi Avenue</h3>
+    <p id="lvlTip"></p>
+    <ul class="goals" id="lvlGoals"></ul>
+    <button class="big" id="btnLevelGo"><svg><use href="#i-play"/></svg><span data-i18n="start">ANZA</span></button>
+  </div>
+</div>
+
+<div id="result" class="overlay hidden">
+  <div class="card">
+    <div class="band win" id="resBand">UMEMSHIKA!</div>
+    <div class="bigstars" id="resStars"></div>
+    <p id="resText"></p>
+    <div class="money"><svg><use href="#i-coin"/></svg><span id="resCash">0</span></div>
+    <ul class="goals" id="resGoals"></ul>
+    <button class="big" id="btnNext"><span data-i18n="next_level"></span></button>
+    <div class="row2"><button class="big alt" id="btnReplay"><span data-i18n="replay"></span></button><button class="big alt" id="btnResMap"><span data-i18n="to_map"></span></button></div>
   </div>
 </div>
 
 <div id="caught" class="overlay hidden">
   <div class="card">
-    <div class="band">UMEMSHIKA!</div>
-    <p>Kibaka amekamatwa pale <b id="caughtZone">MARIKITI</b>. Kikapu kimerudi kwa Mama Fatuma!</p>
+    <div class="band" data-i18n="caught_band">UMEMSHIKA!</div>
+    <p id="caughtText"></p>
     <div class="money"><svg><use href="#i-coin"/></svg><span id="caughtCash">0</span></div>
-    <p class="hint">Ukimfukuza tena na akutoroke, zawadi ya mshiko inapotea.</p>
-    <button class="big" id="btnAgain">Ametoroka tena! Mfukuze</button>
-    <button class="big alt" id="btnBank">Chukua pesa, nenda nyumbani</button>
+    <p class="hint" data-i18n="caught_hint"></p>
+    <button class="big" id="btnAgain"><span data-i18n="again"></span></button>
+    <button class="big alt" id="btnBank"><span data-i18n="bank"></span></button>
   </div>
 </div>
 
 <div id="pause" class="overlay hidden">
   <div class="card">
-    <div class="band blue">PUMZIKA KIDOGO</div>
-    <button class="big" id="btnResume">Endelea</button>
-    <button class="big alt" id="btnSound"><svg><use id="soundIcon" href="#i-sound"/></svg><span id="soundText">Sauti: imewashwa</span></button>
-    <button class="big alt" id="btnQuit">Maliza mbio</button>
+    <div class="band blue" data-i18n="pause_band">PUMZIKA KIDOGO</div>
+    <button class="big" id="btnResume"><span data-i18n="resume"></span></button>
+    <button class="big alt" id="btnSound"><svg><use id="soundIcon" href="#i-sound"/></svg><span id="soundText"></span></button>
+    <button class="big alt" data-lang-toggle><svg><use href="#i-globe"/></svg><span data-i18n="lang"></span></button>
+    <button class="big alt" id="btnQuit"><span data-i18n="quit"></span></button>
   </div>
 </div>
 
 <div id="over" class="overlay hidden">
   <div class="card">
     <div class="band" id="overBand">AMETOROKA!</div>
-    <p id="overHead">Kibaka atoroka pale Nyali</p>
+    <p id="overHead"></p>
     <div class="money"><svg><use href="#i-coin"/></svg><span id="overCash">0</span></div>
-    <div class="grid3"><div><b id="overDist">0 m</b>Umbali</div><div><b id="overCatch">0</b>Mshiko</div><div><b id="overBest">0</b>Rekodi</div></div>
-    <button class="big" id="btnRetry">Cheza tena</button>
-    <button class="big alt" id="btnShare">Tuma kwa marafiki</button>
+    <div class="grid3"><div><b id="overDist">0 m</b><span data-i18n="dist"></span></div><div><b id="overCatch">0</b><span data-i18n="catches"></span></div><div><b id="overBest">0</b><span data-i18n="record"></span></div></div>
+    <button class="big" id="btnRetry"><span data-i18n="retry"></span></button>
+    <div class="row2"><button class="big alt" id="btnShare"><span data-i18n="share"></span></button><button class="big alt" id="btnOverMap"><span data-i18n="to_map"></span></button></div>
   </div>
 </div>
 
 <div id="demoTitle" class="demo hidden">
   <h1 class="logo xl">MWIZI!</h1>
-  <div class="tagline">Mbio za mitaa ya Mombasa</div>
+  <div class="tagline">Mbio za mitaa ya Mombasa<small>Mombasa street chase</small></div>
 </div>
 <div id="demoZone" class="demo hidden"><span id="demoZoneName">LIKONI FERRY</span></div>
 <div id="demoEnd" class="demo hidden">
   <h1 class="logo xl">MWIZI!</h1>
-  <div class="tagline">Mshike Kibaka. Mombasa Raha!</div>
+  <div class="tagline">Mshike Kibaka. Mombasa Raha!<small>Catch the thief. 6 levels across Mombasa</small></div>
   <div class="cta">Cheza sasa kwenye Android</div>
 </div>
 

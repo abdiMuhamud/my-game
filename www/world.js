@@ -179,6 +179,16 @@ function facade(style, floors, v) {
   return cached(`f${style}${floors}${v}`, () => canvasTex(512, Math.round((144 + floors * 96) * K), x => {
     x.scale(K, K);
     const W = 384, H = 144 + floors * 96, blue = hex(PAL.blue), FH = 96, top = 24, gy = top + floors * FH;
+    if (style === 'mall') { // Nyali Centre: banner band, glass storeys, glass shopfronts
+      x.fillStyle = '#f4f1ea'; x.fillRect(0, 0, W, H);
+      x.fillStyle = ['#12b5b0', '#d81e5b', '#1546b8'][v % 3]; x.fillRect(0, 6, W, 56);
+      label(x, ['NYALI CENTRE', 'FOOD COURT', 'CINEMA'][v % 3], W / 2, 35, 34, '#ffffff', W - 40);
+      for (let f = 0; f < floors; f++) { const y = 70 + f * 96; glass(x, 8, y, W - 16, 80, '#2f86c9', '#9fd8f5'); x.fillStyle = 'rgba(255,255,255,.85)'; for (let c = 1; c < 6; c++) x.fillRect(c * 64 - 2, y, 4, 80); }
+      x.fillStyle = '#1b2433'; x.fillRect(0, gy + 16, W, H);
+      glass(x, 18, gy + 26, 150, 104, '#3d6d9c', '#9fd0ea'); glass(x, 216, gy + 26, 150, 104, '#3d6d9c', '#9fd0ea');
+      x.fillStyle = '#ffc21a'; x.fillRect(176, gy + 36, 32, 94);
+      return;
+    }
     if (style === 'tower') { // modern glass curtain wall
       const [a, b] = GLASS[v % 3];
       const g = x.createLinearGradient(0, 0, W, H); g.addColorStop(0, b); g.addColorStop(0.45, a); g.addColorStop(1, '#1d4f86');
@@ -266,6 +276,10 @@ function building(style, floors, v) {
       const cap = M(isOld(style) ? 0x8a5a33 : style === 'tower' ? 0xeef2f5 : style === 'pastel' ? 0xffffff : PAL.blue);
       m(G.box, cap, BD + 0.3, 0.35, 0.3, 0, h + 0.17, BW / 2, g); m(G.box, cap, BD + 0.3, 0.35, 0.3, 0, h + 0.17, -BW / 2, g);
       m(G.box, cap, 0.3, 0.35, BW + 0.3, fx, h + 0.17, 0, g); m(G.box, cap, 0.3, 0.35, BW + 0.3, -fx, h + 0.17, 0, g);
+      if (style === 'mall') { // entrance canopy and hanging banners
+        m(G.box, M(0x12b5b0), 2.4, 0.25, BW - 1, fx - 1.1, 4.3, 0, g);
+        for (const z of [-4, 4]) m(G.box, M(BRIGHT[(v + (z > 0 ? 2 : 5)) % BRIGHT.length]), 0.1, 3.2, 1.1, fx - 0.3, 6.8, z, g);
+      }
       if (style === 'tower') {
         m(G.box, M(0xeef2f5), 4, 1.6, 5, 0.5, h + 0.8, 0, g); m(G.cyl, M(0x8d99a6), 0.12, 4, 0.12, 1, h + 3.4, 1, g); m(G.sph, M(0xc8102e), 0.3, 0.3, 0.3, 1, h + 5.4, 1, g);
         for (let k = 0; k < 5; k++) m(G.box, white, 0.5, h - 4.4, 0.22, fx - 0.2, 4.4 + (h - 4.4) / 2, -BW / 2 + 0.11 + k * (BW - 0.22) / 4, g); // fins
@@ -706,6 +720,149 @@ function bunting(g, variant) {
   }), 0, 0, -3);
 }
 
+// ---------- Season 1 streets: Digo Road, Mwembe Tayari, Kilindini Port, Nyali Centre ----------
+const CONTAINER_COLS = [0xc8102e, 0x1546b8, 0x2f9e44, 0xe98a4b, 0x7b3fb3, 0xd9a830, 0x12808c, 0x8a8f96];
+function corrugTex() {
+  return cached('corrug', () => {
+    const t = canvasTex(128, 128, (x, W, H) => {
+      x.fillStyle = '#ffffff'; x.fillRect(0, 0, W, H);
+      for (let k = 0; k < 16; k++) { x.fillStyle = k % 2 ? 'rgba(0,0,0,.16)' : 'rgba(255,255,255,.4)'; x.fillRect(k * 8, 0, 4, H); }
+      x.fillStyle = 'rgba(0,0,0,.28)'; x.fillRect(0, 0, W, 6); x.fillRect(0, H - 6, W, 6);
+      x.fillStyle = 'rgba(0,0,0,.35)'; x.fillRect(W / 2 - 1, 8, 2, H - 16);
+    });
+    return t;
+  });
+}
+const CONTAINER_MAT = () => cached('contMat', () => Lam({ map: corrugTex(), vertexColors: true }));
+// several containers merged into one mesh: [x, y, z, color] centres, each 2.44 wide, 2.6 tall, 6 long
+function containerMesh(list) {
+  const parts = list.map(([x, y, z, c]) => tinted(new THREE.BoxGeometry(2.44, 2.6, 6).translate(x, y + 1.3, z), c));
+  const mesh = new THREE.Mesh(mergeGeometries(parts), CONTAINER_MAT());
+  mesh.castShadow = mesh.receiveShadow = true;
+  return mesh;
+}
+export function makeTuktuk(v = 0) { return obstacleMeta('tuktuk', v % 4).tpl.clone(); }
+export function makeRideToken() { // a little tuk-tuk spinning in a ring: hop on the back of one
+  const g = new THREE.Group(), t = makeTuktuk(0); t.scale.setScalar(0.34); t.position.y = -0.35; g.add(t); g.add(halo(0xffc21a)); return g;
+}
+export function makeCraneLoad() { // a container swinging from a crane cable; the obstacle moves it across the lanes
+  const g = new THREE.Group(); g.name = 'load';
+  const c = containerMesh([[0, 0.25, 0, CONTAINER_COLS[1]]]); c.scale.set(0.9, 0.9, 0.42); g.add(c);
+  m(G.box, M(0x2a2d33), 0.05, 7, 0.05, 0, 6.2, 0, g);
+  m(G.box, M(0xffc21a), 2.4, 0.18, 0.4, 0, 2.75, 0, g);
+  return g;
+}
+Object.assign(OBST, {
+  container(v) { // a parked container on a trailer: climb it from a ramp, or dodge it
+    const g = new THREE.Group();
+    g.add(containerMesh([[0, 0, 0, CONTAINER_COLS[v % CONTAINER_COLS.length]]]));
+    m(G.box, M(0x2a2d33), 2.2, 0.2, 6, 0, -0.05, 0, g);
+    return { g, kind: 'block', half: 3.0, top: 2.6 };
+  },
+  boda(v) { // a bodaboda with its rider, built facing -z; the game turns it to cut across the road
+    const g = new THREE.Group(), col = M([0xc8102e, 0x1546b8, 0x17191d, 0x2f9e44][v % 4]);
+    for (const z of [-0.68, 0.68]) { m(G.cyl, TYRE, 0.62, 0.14, 0.62, 0, 0.31, z, g).rotation.z = Math.PI / 2; m(G.cyl, HUB, 0.3, 0.16, 0.3, 0, 0.31, z, g).rotation.z = Math.PI / 2; }
+    R(col, 0.34, 0.34, 0.9, 0.1, 0, 0.62, -0.1, g); R(M(0x17191d), 0.3, 0.12, 0.7, 0.05, 0, 0.82, 0.25, g);
+    m(G.box, M(0x9aa0a6), 0.06, 0.6, 0.06, 0, 0.75, -0.62, g).rotation.x = 0.3;
+    m(G.box, M(0x17191d), 0.7, 0.05, 0.05, 0, 1.05, -0.72, g);
+    m(G.sph, M(0xfffbe0, { emissive: 0xbbbb88 }), 0.16, 0.16, 0.1, 0, 0.9, -0.82, g);
+    m(G.box, M(0x9aa0a6), 0.08, 0.08, 0.5, 0.18, 0.4, 0.45, g);
+    return { g, kind: 'block', half: 0.5 };
+  },
+  crane() { // Kilindini gantry crane spanning the road; its swinging load is added by the game
+    const g = new THREE.Group(), y = M(0xffc21a), red = M(0xc8102e);
+    for (const x of [-5.6, 5.6]) for (const z of [-1.6, 1.6]) m(G.box, y, 0.45, 9.5, 0.45, x, 4.75, z, g);
+    for (const z of [-1.6, 1.6]) m(G.box, y, 12, 0.6, 0.5, 0, 9.4, z, g);
+    for (const x of [-5.6, 5.6]) m(G.box, red, 0.5, 0.5, 3.6, x, 0.25, 0, g);
+    m(G.box, M(0x2a2d33), 1.6, 0.8, 3.6, 0, 9.0, 0, g);
+    return { g, kind: 'block', half: 1.3 };
+  },
+});
+Object.assign(MODEL, {
+  powerLines() { // Digo Road: wooden poles and sagging wires across the street
+    const g = new THREE.Group(), wood = M(0x6b4f33), wire = M(0x1b1d22);
+    for (const x of [-5.6, 5.6]) { m(G.cyl, wood, 0.22, 8.5, 0.22, x, 4.25, 0, g); m(G.box, wood, 1.6, 0.12, 0.12, x, 8.1, 0, g); }
+    m(G.box, M(0x8d99a6), 0.6, 0.8, 0.5, 5.6, 6.6, 0.3, g);
+    for (const dx of [-0.6, 0, 0.6]) for (let k = 0; k < 8; k++) {
+      const x0 = -5.6 + k * 1.4, sag = t => 8.2 - Math.sin(t * Math.PI) * 0.9;
+      const a = sag(k / 8), b = sag((k + 1) / 8), s = m(G.box, wire, 1.42, 0.03, 0.03, x0 + 0.7, (a + b) / 2, dx, g);
+      s.rotation.z = Math.atan2(b - a, 1.4); s.castShadow = false;
+    }
+    return g;
+  },
+  mitumba(v) { // second-hand clothes on a rail: Digo Road sidewalks
+    const g = new THREE.Group(), steel = M(0x8d99a6);
+    for (const z of [-1.1, 1.1]) m(G.box, steel, 0.06, 1.9, 0.06, 0, 0.95, z, g);
+    m(G.box, steel, 0.05, 0.05, 2.3, 0, 1.85, 0, g);
+    for (let k = 0; k < 7; k++) m(G.box, M(BRIGHT[(k + v * 3) % BRIGHT.length]), 0.12, 0.85, 0.26, 0, 1.38, -0.95 + k * 0.32, g);
+    m(G.box, M(0x9a6a3a), 0.7, 0.5, 0.9, 0.4, 0.25, 0.6, g);
+    return g;
+  },
+  stageSign() { // Mwembe Tayari: destinations board on two posts
+    const g = new THREE.Group(), tex = cached('stageTex', () => canvasTex(512, 160, (x, W, H) => {
+      x.fillStyle = '#0b6b3a'; x.fillRect(0, 0, W, H); x.strokeStyle = '#ffc21a'; x.lineWidth = 8; x.strokeRect(6, 6, W - 12, H - 12);
+      label(x, 'MWEMBE TAYARI STAGE', W / 2, 40, 40, '#ffffff', W - 40);
+      label(x, 'NAIROBI • MALINDI • LIKONI • KILIFI', W / 2, 104, 30, '#ffc21a', W - 40);
+    }));
+    for (const z of [-1.7, 1.7]) m(G.cyl, M(0x8d99a6), 0.14, 4.4, 0.14, 0, 2.2, z, g);
+    const b = new THREE.Mesh(G.plane, Lam({ map: tex, side: THREE.DoubleSide })); b.scale.set(4, 1.25, 1); b.rotation.y = -Math.PI / 2; b.position.y = 3.6; g.add(b);
+    return g;
+  },
+  stageShelter() { // long shade roof over the boarding bays
+    const g = new THREE.Group(), steel = M(0x5f6b78);
+    for (const z of [-5, 0, 5]) m(G.box, steel, 0.14, 3.2, 0.14, 1.2, 1.6, z, g);
+    const roof = m(G.box, M(0x1546b8), 3.4, 0.12, CHUNK - 0.4, 1.0, 3.25, 0, g); roof.rotation.z = -0.1;
+    m(G.box, M(0x9a6a3a), 0.5, 0.45, CHUNK - 3, 1.9, 0.45, 0, g);
+    return g;
+  },
+  containerWall(v) { // stacked containers behind the quay fence, one merged mesh
+    const list = [];
+    for (let row = 0; row < 2; row++) for (let k = 0; k < 2; k++) {
+      const h = 1 + ((v + row * 3 + k * 5) % 3);
+      for (let s = 0; s < h; s++) list.push([row * 2.6, s * 2.6, -3 + k * 6.05, CONTAINER_COLS[(v * 7 + row * 3 + k * 2 + s * 5) % CONTAINER_COLS.length]]);
+    }
+    const g = new THREE.Group(); g.add(containerMesh(list)); return g;
+  },
+  portFence() {
+    const g = new THREE.Group(), steel = M(0x9aa0a6);
+    for (let k = 0; k < 4; k++) m(G.box, steel, 0.08, 2.2, 0.08, 0, 1.1, -CHUNK / 2 + 1.5 + k * 3, g);
+    m(G.box, steel, 0.05, 0.05, CHUNK, 0, 2.15, 0, g); m(G.box, steel, 0.05, 0.05, CHUNK, 0, 1.0, 0, g);
+    m(G.box, M(0xc8102e), 0.04, 0.3, CHUNK, 0, 0.15, 0, g);
+    return g;
+  },
+  floodLight() {
+    const g = new THREE.Group();
+    m(G.cyl, M(0x8d99a6), 0.25, 14, 0.25, 0, 7, 0, g);
+    m(G.box, M(0x5f6b78), 1.6, 0.6, 0.4, 0, 14, 0, g); m(G.box, M(0xfff3b0, { emissive: 0xaaa060 }), 1.4, 0.4, 0.1, 0, 14, -0.22, g);
+    return g;
+  },
+  ship() { // cargo ship berthed at Kilindini, piled with containers
+    const g = new THREE.Group();
+    R(M(0x1b2433), 14, 6, 60, 0.8, 0, 1.5, 0, g); m(G.box, M(0xc8102e), 14.2, 1.2, 60.2, 0, -1.0, 0, g);
+    R(M(0xfbfaf5), 10, 8, 8, 0.4, 0, 8.5, 22, g); m(G.box, M(0x24384f), 10.1, 1.2, 8.1, 0, 10.5, 22, g);
+    const list = [];
+    for (let r = 0; r < 4; r++) for (let k = 0; k < 6; k++) for (let s = 0; s < 1 + ((r + k) % 3); s++) list.push([-4.5 + r * 3, 4.5 + s * 2.6, -22 + k * 6.6, CONTAINER_COLS[(r * 5 + k * 3 + s) % CONTAINER_COLS.length]]);
+    g.add(containerMesh(list));
+    return g;
+  },
+  mallPylon() { // the big NYALI CENTRE sign at the car park entrance
+    const g = new THREE.Group(), tex = cached('pylonTex', () => canvasTex(160, 512, (x, W, H) => {
+      x.fillStyle = '#12b5b0'; x.fillRect(0, 0, W, H); x.fillStyle = '#ffffff'; x.fillRect(10, 10, W - 20, H - 20);
+      x.save(); x.translate(W / 2, H / 2); x.rotate(-Math.PI / 2); label(x, 'NYALI CENTRE', 0, -14, 52, '#1546b8', H - 60); label(x, 'SHOPS • CINEMA • FOOD', 0, 34, 24, '#d81e5b', H - 60); x.restore();
+    }));
+    const s = new THREE.Mesh(G.box, Lam({ map: tex })); s.scale.set(0.5, 8, 2.4); s.position.y = 4.6; s.castShadow = true; g.add(s);
+    m(G.box, M(0xcfd6dc), 1.2, 0.6, 3.0, 0, 0.3, 0, g);
+    return g;
+  },
+  car(v) { // parked saloon car
+    const g = new THREE.Group(), col = M([0xfbfaf5, 0xc8102e, 0x1b2433, 0x8d99a6, 0x1546b8][v % 5]);
+    R(col, 1.7, 0.6, 4.0, 0.18, 0, 0.6, 0, g); R(col, 1.5, 0.55, 2.2, 0.2, 0, 1.12, 0.1, g);
+    m(G.box, M(0x24384f), 1.52, 0.4, 1.9, 0, 1.14, 0.1, g);
+    for (const z of [-1.3, 1.3]) { wheel(g, -0.8, 0.33, z, 0.33); wheel(g, 0.8, 0.33, z, 0.33); }
+    return g;
+  },
+});
+
 // One 12 m slice of street.  side -1 is the left of the road, +1 the right.
 export function buildChunk(i, zone, info, rnd) {
   const g = new THREE.Group(), ri = n => Math.floor(rnd() * n), zc = info.zoneChunk;
@@ -718,8 +875,10 @@ export function buildChunk(i, zone, info, rnd) {
   if (['MARIKITI', 'MJI WA KALE', 'LIKONI FERRY'].includes(zone.name) && zc % 3 === 0) bunting(g, i);
   if (zone.name === 'MJI WA KALE' && zc % 3 === 1) put(g, inst('lanterns', MODEL.lanterns), 0, 0, 2);
   if (i === 1) put(g, streetSign('LIKONI FERRY', 'MOMBASA • KARIBU PWANI'), 5.1, 0, 1, -.25);
-  if (info.first && i > 0) { gantry(g, CHUNK / 2 - 0.5, zone.name); put(g, inst('zebra', MODEL.zebra), 0, 0, CHUNK / 2 - 3); }
+  if (info.first && i > 0) { gantry(g, CHUNK / 2 - 0.5, zone.label || zone.name); put(g, inst('zebra', MODEL.zebra), 0, 0, CHUNK / 2 - 3); }
   if (zone.name === 'MOI AVENUE' && zc % 12 === 1) put(g, inst('tusks', MODEL.tusks), 0, 0, 0);
+  if (zone.name === 'DIGO ROAD' && i % 2 === 0) put(g, inst('powerLines', MODEL.powerLines), 0, 0, -2);
+  if (zone.name === 'KILINDINI PORT' && zc % 5 === 3) put(g, inst('craneScene', () => OBST.crane().g), 0, 0, 0);
   for (const side of [-1, 1]) {
     const kind = side < 0 ? zone.L : zone.R, X = v => side * v, face = side > 0 ? 0 : Math.PI;
     const palm = (x, z) => put(g, inst('palm' + ri(4), () => MODEL.palm(ri(4))), X(x), 0, z, rnd() * 6);
@@ -753,8 +912,38 @@ export function buildChunk(i, zone, info, rnd) {
       }
       continue;
     }
-    const sw = kind === 'old' ? 1.1 : 2;
+    if (kind === 'port') { // Kilindini: concrete quay, fence, container stacks; the harbour and a ship on the left
+      ground(g, 0xbfc3c8, side < 0 ? 12 : 60, X(4 + (side < 0 ? 6 : 30)));
+      put(g, inst('portFence', MODEL.portFence), X(4.7), 0, 0);
+      const v = (i * 3 + (side > 0 ? 1 : 0)) % 6;
+      put(g, inst('cwall' + v, () => MODEL.containerWall(v)), X(7.2), 0, 0, face);
+      if (side > 0) put(g, inst('cwall' + ((v + 2) % 6), () => MODEL.containerWall((v + 2) % 6)), X(13.5), 0, 0, face);
+      else { m(G.box, M(0xffc21a), 0.4, 0.32, CHUNK, X(15.9), 0.02, 0, g); if (zc % 6 === 2) put(g, inst('ship', MODEL.ship), X(30), -1.4, 0); }
+      if (i % 3 === 0) put(g, inst('floodLight', MODEL.floodLight), X(5.4), 0, 3, face);
+      if (rnd() < 0.35) person(X(5.4), rnd() * 8 - 4, side);
+      continue;
+    }
+    const sw = kind === 'old' ? 1.1 : kind === 'mall' ? 3.2 : 2;
     const walk = m(G.box, cached('walk', () => Lam({ map: paveTex() })), sw, 0.16, CHUNK, X(4 + sw / 2), 0.08, 0, g); walk.castShadow = false;
+    if (kind === 'stage') { // Mwembe Tayari: shelters over the boarding bays, matatus parked in the lot
+      ground(g, 0x8d8a84, 40, X(4 + sw + 20));
+      put(g, inst('stageShelter', MODEL.stageShelter), X(4.2), 0.16, 0, face);
+      for (const [dx, dz] of [[8.4, -3.2], [8.4, 3.2], [11.2, 0]]) if (rnd() < 0.8) vehicle('matatu', X(dx), dz, rnd() < 0.5 ? 0 : Math.PI);
+      if (zc % 5 === 1) put(g, inst('stageSign', MODEL.stageSign), X(6.6), 0, 4, face);
+      if (zc % 2 === 0) { const b = building('cbd', 3 + ri(2), ri(3)); put(g, b.obj, X(14 + BD / 2), 0, 0, face); }
+      for (let k = 0, n = 1 + ri(3); k < n; k++) person(X(4.5 + rnd() * 1.2), rnd() * 10 - 5, side); // touts calling out destinations
+      continue;
+    }
+    if (kind === 'mall') { // Nyali Centre: wide palm-lined walk, car park, the mall set back behind it
+      ground(g, PAL.pave, 50, X(4 + sw + 25));
+      palm(6.7, (i % 2 ? 3 : -3) * side);
+      if (i % 2 === 0) lamp(4.7);
+      [-3.6, 0, 3.6].forEach((dz, k) => { if (rnd() < 0.6) { const cv = (i + k) % 5; put(g, inst('car' + cv, () => MODEL.car(cv)), X(9.4), 0, dz, -side * Math.PI / 2); } });
+      if (zc % 6 === 2) put(g, inst('mallPylon', MODEL.mallPylon), X(7.6), 0, -4, face);
+      const b = building('mall', 2, (i + (side > 0 ? 1 : 0)) % 3); put(g, b.obj, X(12 + BD / 2), 0, 0, face);
+      for (let k = 0, n = ri(3); k < n; k++) person(X(4.6 + rnd() * 2.2), rnd() * 10 - 5, side);
+      continue;
+    }
     if (kind === 'sea') { // seafront: railing, palms and dhows on the Indian Ocean
       put(g, inst('railing', MODEL.railing), X(5.9), 0.16, 0);
       if (i % 2 === 0) lamp(5.6);
@@ -787,9 +976,10 @@ export function buildChunk(i, zone, info, rnd) {
     else {
       const style = kind === 'old' ? (r < 0.45 ? 'coral' : 'old')
         : kind === 'market' ? (r < 0.25 ? 'old' : 'pastel')
+          : zone.name === 'DIGO ROAD' ? (r < 0.35 ? 'pastel' : r < 0.7 ? 'cbd' : r < 0.85 ? 'old' : 'balcony')
           : zone.name === 'MOI AVENUE' ? (r < 0.14 ? 'tower' : r < 0.38 ? 'old' : r < 0.6 ? 'pastel' : r < 0.82 ? 'cbd' : 'balcony')
             : r < 0.05 ? 'tower' : r < 0.55 ? 'cbd' : 'balcony';
-      const floors = style === 'tower' ? 6 + ri(4) : isOld(style) ? 2 + ri(2) : 2 + ri(3);
+      const floors = style === 'tower' ? 6 + ri(4) : zone.name === 'DIGO ROAD' ? 3 + ri(2) : isOld(style) ? 2 + ri(2) : 2 + ri(3);
       const b = building(style, floors, ri(3));
       put(g, b.obj, X(x0 + BD / 2 + (kind === 'market' ? 1.2 : 0) + (style === 'tower' ? 1.4 : 0)), 0, 0, face);
     }
@@ -817,6 +1007,10 @@ export function buildChunk(i, zone, info, rnd) {
     if (zc % 4 === 1) {
       const names = kind === 'old' ? ['MJI WA KALE', 'OLD TOWN • MOMBASA'] : kind === 'city' && zone.name === 'LIKONI FERRY' ? ['MAMA FATUMA', 'MAHAMRI • CHAI • MADAFU'] : ['MOMBASA RAHA', 'KARIBU PWANI'];
       put(g, streetSign(...names, i % 2 ? PAL.sea : PAL.blue), X(5.4), 0, 4, -side * .35);
+    }
+    if (zone.name === 'DIGO ROAD') { // mitumba racks and hawkers crowd the Digo Road sidewalks
+      if (rnd() < 0.55) put(g, inst('mitumba' + (i % 3), () => MODEL.mitumba(i % 3)), X(5.3), 0.16, rnd() * 6 - 3, face);
+      person(X(4.6), rnd() * 8 - 4, side);
     }
     const n = Math.floor(rnd() * 2.2);
     for (let k = 0; k < n; k++) person(X(4.4 + rnd() * (sw - 0.6)), rnd() * 10 - 5, side);

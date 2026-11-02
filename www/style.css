@@ -137,3 +137,45 @@ svg { width: 1em; height: 1em; display: block; flex: none; }
 /* Power-ups: kahawa (speed + magnet) and the bodaboda helmet shield */
 .boost + .boost { margin-top: 6px; }
 .boost.shield i { background: linear-gradient(90deg, #3ee6c4, #12b5b0); }
+
+/* ---------- Season 1: map, levels, results, language ---------- */
+.boost.ride i { background: linear-gradient(90deg, #ffe07a, #ffc21a); }
+.langbtn { position: absolute; right: 14px; top: calc(var(--top) + 4px); z-index: 2; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 999px; background: rgba(13, 27, 42, .62); color: #fff; font: 800 13px var(--body); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .3); }
+.langbtn svg { font-size: 17px; }
+.langbtn.small { position: static; }
+.screen .endless { margin-top: 10px; height: 44px; font-size: 16px; }
+.mapscreen { position: fixed; inset: 0; display: flex; flex-direction: column; background: #0f5d84; color: #fff; padding: var(--top) 12px var(--bottom); }
+.maphead { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.maphead > div { flex: 1; }
+.maphead h2 { margin: 0; font: 400 24px var(--display); letter-spacing: 1px; }
+.maphead small { opacity: .8; font-size: 12px; }
+.mapwrap { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.island { width: 100%; height: 100%; max-width: 520px; border-radius: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); }
+#pins { position: absolute; inset: 0; pointer-events: none; }
+.pin { background: none; border: 0; padding: 0; color: #fff; position: absolute; transform: translate(-50%, -100%); pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pin .dot { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font: 400 22px var(--display); color: var(--ink); background: linear-gradient(180deg, #fff27a, #ffc21a); box-shadow: 0 4px 0 var(--sun-dk), 0 8px 14px rgba(0, 0, 0, .35); border: 3px solid #fff; }
+.pin.locked .dot { background: #8d99a6; box-shadow: 0 4px 0 #5f6b78; color: #fff; font-size: 18px; }
+.pin.locked .dot svg { font-size: 20px; }
+.pin.sel .dot { transform: scale(1.15); outline: 4px solid #ff5c8a; }
+.pin .mini { display: flex; color: #ffc21a; font-size: 12px; filter: drop-shadow(0 1px 0 #0d1b2a); }
+.pin .mini svg.off { color: rgba(255, 255, 255, .45); }
+.pin .name { font: 400 12px var(--display); background: rgba(13, 27, 42, .72); border-radius: 8px; padding: 1px 7px; white-space: nowrap; }
+.levelcard { margin: 10px auto 0; width: min(100%, 420px); background: #fff; color: var(--ink); border-radius: 22px; padding: 14px 16px 16px; box-shadow: 0 8px 0 rgba(0, 0, 0, .2); }
+.lvltop { display: flex; justify-content: space-between; align-items: center; }
+.lvltop b { font: 400 15px var(--display); color: var(--blue); letter-spacing: .5px; }
+.levelcard h3 { margin: 4px 0 2px; font: 400 24px var(--display); }
+.levelcard p { margin: 0 0 8px; font-size: 13px; line-height: 1.35; color: #3c4a5c; }
+.stars { display: flex; gap: 2px; font-size: 20px; color: #ffc21a; }
+.stars svg.off, .bigstars svg.off { color: #d8dee8; }
+.goals { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.goals li { display: flex; align-items: center; gap: 8px; background: #eef3fb; border-radius: 10px; padding: 6px 10px; }
+.goals li svg { font-size: 18px; color: #ffc21a; }
+.goals li.off svg { color: #c7d0dc; }
+.bigstars { display: flex; justify-content: center; gap: 6px; font-size: 46px; color: #ffc21a; margin: 6px 0 2px; }
+.bigstars svg { animation: pop .45s cubic-bezier(.2, 1.8, .4, 1) both; }
+.bigstars svg:nth-child(2) { animation-delay: .15s; } .bigstars svg:nth-child(3) { animation-delay: .3s; }
+@keyframes pop { from { transform: scale(0); } }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.row2 .big { margin-top: 10px; }
+.demo .tagline small { display: block; font: 800 .5em var(--body); color: #5b6878; margin-top: 2px; }
+#demoZone span { white-space: nowrap; max-width: 94vw; font-size: clamp(20px, 6.2vw, 40px); }

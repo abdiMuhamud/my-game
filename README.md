@@ -10,6 +10,17 @@ Mji wa Kale, Fort Jesus and Nyali Bridge to Bamburi Beach.
 
 The APK is a debug build for direct install (allow "install unknown apps" on the phone).
 
+## Levels (Season 1)
+
+1. Likoni to Moi Avenue: the basics, under the Moi Avenue tusks
+2. Digo Road and Mwembe Tayari stage: bodabodas cutting across the road
+3. Marikiti and Old Town: stay in Kibaka's lane and the crowd blocks him
+4. Kilindini Port: climb the container stacks, dodge the swinging crane loads
+5. Nyali by night: Fort Jesus, Nyali Bridge, Nyali Centre; hop on the back of a tuk-tuk
+6. Finale at Bamburi Beach
+
+Each level awards up to 3 stars: catch Kibaka, collect the coin target, take no hits. Endless mode loops through all the streets. Swahili and English are switchable from the menu.
+
 ## Develop
 
 ```bash

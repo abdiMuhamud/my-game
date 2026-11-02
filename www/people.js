@@ -20,6 +20,7 @@ export async function loadPeople(onProgress) {
     p.castShadow = p.receiveShadow = true; p.scale.setScalar(0.95 + rnd() * 0.1);
     return p;
   };
+  hooks.rider = rnd => { const p = new THREE.Mesh(riders[Math.floor(rnd() * riders.length)], CROWD_MAT); p.castShadow = true; return p; };
 }
 
 // swap the model's flat materials for our own palette, by material name
@@ -79,7 +80,7 @@ export function makeThief() {
 
 // ---------- the street crowd ----------
 const CROWD_MAT = Lam({ vertexColors: true });
-const crowd = [];
+const crowd = [], riders = [];
 function bakePose(gltf, clipName, time, colors, extras) {
   const root = gltf.scene, mixer = new THREE.AnimationMixer(root);
   const clip = gltf.animations.find(c => c.name.endsWith('|' + clipName));
@@ -132,4 +133,9 @@ function buildCrowd() {
     ['punk', 'Punch_Right', 0.45, youth(0, B(6), 0x22252b)],                      // shaking a fist at the thief
   ];
   for (const [file, clip, time, colors, extras] of list) crowd.push(bakePose(models[file], clip, time, colors, extras));
+  // bodaboda riders, helmet on
+  const helmetOn = c => [part(SPH, c, 0.4, 0.36, 0.44, 0, 1.79, 0.03), part(SPH, 0x14181f, 0.3, 0.1, 0.1, 0, 1.74, 0.2)];
+  riders.push(bakePose(models.casual, 'Idle_Neutral', 0.2, man(1, B(6), 0x2b3a55), helmetOn(0xd81e1e)));
+  riders.push(bakePose(models.hoodie, 'Idle', 0.4, youth(2, B(3), 0x3d3d3d), helmetOn(0x1546b8)));
+  riders.push(bakePose(models.casual, 'Idle', 0.6, man(3, 0xf7f5ec, 0x3d3d3d), helmetOn(0xffc21a)));
 }
