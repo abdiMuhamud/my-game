@@ -93,9 +93,13 @@ await loadPeople(p => { $('loadFill').style.width = (10 + p * 90) + '%'; });
 const hero = makeHero(), thief = makeThief();
 hero.scale.setScalar(1.32); thief.scale.setScalar(1.25);
 const flying = makeNdara(); flying.visible = false;
-const helmet = makeHelmetModel(); helmet.scale.setScalar(0.62); helmet.visible = false; // worn while the shield lasts
+const helmet = makeHelmetModel(); helmet.scale.setScalar(0.8); helmet.visible = false; // worn while the shield lasts
 const headBone = hero.userData.bone('Head');
 scene.add(hero, thief, flying, helmet);
+// a few neighbours cheering the runner on, on the home screen
+const fans = new THREE.Group();
+for (const [x, z, ry, k] of [[1.5, -0.6, -0.5, 0], [2.6, -2.4, -0.3, 3], [-2.4, -3.2, 0.4, 2]]) { const p = hooks.kanzu(k); p.position.set(x, 0, z); p.rotation.y = ry; fans.add(p); }
+scene.add(fans);
 let rideMesh = null; // the tuk-tuk the runner is hanging on to
 
 // little bursts when coins are picked up or someone takes a knock
@@ -314,6 +318,7 @@ function smash(o) { // riding the tuk-tuk: straight through
   if (rnd() < 0.5) shout(T('sh_smash'), 500);
 }
 function startRun() {
+  fans.visible = false;
   resetRun(); S.mode = 'run';
   for (const id of ['menu', 'map', 'over', 'caught', 'result']) show(id, false);
   show('hud', true); show('tag', true); show('btnThrow', true);
@@ -596,7 +601,8 @@ function place(dt) {
   thief.userData.pose(S.mode === 'caught' ? 'caught' : S.mode === 'over' ? 'idle' : S.tStun > 0 ? 'stun' : S.tSlide > 0 ? 'slide' : S.ty > 0.05 ? 'jump' : 'run', S.speed * 1.05, dt);
   // the bodaboda helmet sits on the runner's head while the shield lasts
   helmet.visible = hero.visible && S.shield > 0 && !(S.shield < 2 && Math.floor(S.t * 8) % 2 === 0);
-  if (helmet.visible) { hero.updateMatrixWorld(true); headBone.getWorldPosition(helmet.position); helmet.position.y += 0.3; helmet.rotation.set(0, hero.rotation.y, hero.rotation.z); }
+  if (helmet.visible) { hero.updateMatrixWorld(true); headBone.getWorldPosition(helmet.position); helmet.position.y += 0.42; helmet.rotation.set(0, hero.rotation.y, hero.rotation.z); }
+  hero.userData.kofia.visible = !helmet.visible; // the helmet goes on over the kofia
 
   for (const c of coins) { c.mesh.visible = c.wz - S.dist < 85; c.mesh.rotation.y = S.t * 5 + c.wz; } // far coins are specks
   for (const p of pickups) { p.mesh.rotation.y = S.t * 2.5; p.mesh.position.y = 1.0 + Math.sin(S.t * 4 + p.wz) * 0.12; }
@@ -666,6 +672,7 @@ function hud() {
 let selected = null;
 const unlocked = lv => lv.id === 1 || (progress[lv.id - 1] || 0) > 0;
 function openMap() {
+  fans.visible = true;
   for (const id of ['menu', 'over', 'result', 'caught', 'hud']) show(id, false);
   show('btnThrow', false); show('tag', false); show('map', true);
   S.mode = 'menu';

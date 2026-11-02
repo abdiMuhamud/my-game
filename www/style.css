@@ -179,3 +179,8 @@ svg { width: 1em; height: 1em; display: block; flex: none; }
 .row2 .big { margin-top: 10px; }
 .demo .tagline small { display: block; font: 800 .5em var(--body); color: #5b6878; margin-top: 2px; }
 #demoZone span { white-space: nowrap; max-width: 94vw; font-size: clamp(20px, 6.2vw, 40px); }
+
+/* Swahili touch: a kanga border along the top of every card */
+.card::before, .levelcard::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px; border-radius: 26px 26px 0 0; background: repeating-linear-gradient(90deg, #c8102e 0 12px, #ffc21a 12px 24px, #0d1b2a 24px 30px, #12b5b0 30px 42px, #ffc21a 42px 54px); }
+.levelcard { position: relative; overflow: hidden; }
+.maphead { border-bottom: 6px solid; border-image: repeating-linear-gradient(90deg, #c8102e 0 12px, #ffc21a 12px 24px, #0d1b2a 24px 30px, #12b5b0 30px 42px) 6; padding-bottom: 8px; }
