@@ -42,7 +42,7 @@ export const LEVELS = [
 ];
 
 // the share video runs a short tour of the new streets
-export const DEMO_ROUTE = [['digo', 78], ['stage', 72], ['port', 96], ['centre', 72], ['bamburi', 200]];
+export const DEMO_ROUTE = [['moi', 96], ['digo', 66], ['port', 90], ['centre', 66], ['bamburi', 200]];
 
 // A route turned into segments with start distances, so any world z maps to a street.
 export function makeRoute(level) {

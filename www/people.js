@@ -1,5 +1,5 @@
-// The people of the game: rigged, animated character models (CC0, by Quaternius) restyled as Mombasa men in
-// Swahili coastal dress, with a cartoon finish (banded light, rim glow, outlines, bigger heads, hands and feet).
+// The people of the game: rigged, animated character models (CC0, by Quaternius) restyled as Mombasa men,
+// with a cartoon finish (banded light, rim glow, outlines, bigger heads, hands and feet).
 // The runner and Kibaka are live skinned models; the street crowd is posed once and baked to static meshes.
 import * as THREE from 'three';
 import { GLTFLoader } from './lib/loaders/GLTFLoader.js';
@@ -9,22 +9,21 @@ const FILES = ['hoodie', 'punk', 'casual'];
 const SKIN = [0x5a3a22, 0x6b4428, 0x7a5030, 0x4a2f1b];
 const HAIR = 0x15100c;
 const BRIGHT = [0xd81e5b, 0xffc21a, 0x12b5b0, 0xe98a4b, 0x2f9e44, 0x7b3fb3, 0x1546b8, 0xf25c54, 0xffffff];
-const BIG = { Head: 1.28, WristL: 1.18, WristR: 1.18, FootL: 1.15, FootR: 1.15 }; // cartoon proportions
+const BIG = {}; // natural proportions
 const models = {};
 
 // ---------- cartoon materials ----------
 const toonRamp = (() => { const t = new THREE.DataTexture(new Uint8Array([90, 170, 255]), 3, 1, THREE.RedFormat); t.minFilter = t.magFilter = THREE.NearestFilter; t.needsUpdate = true; return t; })();
 const CURVE_GLSL = '#include <project_vertex>\n float cz = mvPosition.z; mvPosition.x += cz * cz * uCurve.x; mvPosition.y -= cz * cz * uCurve.y; gl_Position = projectionMatrix * mvPosition;';
 // banded toon light plus a soft rim glow, bent with the curved world like everything else
-function toon(params, rim = 0.32) {
-  const mat = new THREE.MeshToonMaterial({ gradientMap: toonRamp, ...params });
+// physically based skin and cloth, lit by the sky like the rest of the street
+function toon(params) {
+  const mat = new THREE.MeshStandardMaterial({ roughness: 0.72, metalness: 0, ...params });
   mat.onBeforeCompile = sh => {
     sh.uniforms.uCurve = { value: CURVE };
     sh.vertexShader = 'uniform vec2 uCurve;\n' + sh.vertexShader.replace('#include <project_vertex>', CURVE_GLSL);
-    sh.fragmentShader = sh.fragmentShader.replace('#include <emissivemap_fragment>',
-      `#include <emissivemap_fragment>\n float rimF = 1.0 - clamp(dot(normal, normalize(vViewPosition)), 0.0, 1.0);\n totalEmissiveRadiance += vec3(1.0, 0.94, 0.82) * pow(rimF, 2.6) * ${rim.toFixed(2)};`);
   };
-  mat.customProgramCacheKey = () => 'toon' + rim;
+  mat.customProgramCacheKey = () => 'person';
   return mat;
 }
 // dark outline: the back faces pushed out along the (skinned) normals
@@ -43,25 +42,6 @@ function canvasTex(w, h, draw) {
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h; draw(cv.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping; return t;
 }
-// embroidered kofia band: white cap with rows of maroon and gold stitching
-const kofiaTex = () => canvasTex(256, 64, (x, w, h) => {
-  x.fillStyle = '#fbfaf3'; x.fillRect(0, 0, w, h);
-  for (let i = 0; i < 16; i++) {
-    const cx = i * 16 + 8;
-    x.fillStyle = '#7a1f2b'; x.beginPath(); x.moveTo(cx, 10); x.lineTo(cx + 6, 22); x.lineTo(cx, 34); x.lineTo(cx - 6, 22); x.fill();
-    x.fillStyle = '#d9a830'; x.beginPath(); x.arc(cx, 22, 2.2, 0, 7); x.fill();
-    x.fillStyle = '#2f6b4f'; x.fillRect(cx - 5, 44, 10, 3);
-  }
-  x.fillStyle = '#d9a830'; x.fillRect(0, 38, w, 2); x.fillRect(0, h - 6, w, 3);
-});
-// kikoi: the striped cotton wrap of the coast
-const kikoiTex = (a, b, c) => canvasTex(128, 64, (x, w, h) => {
-  const bands = [a, b, a, c, '#fbfaf3', c, a, b, a];
-  bands.forEach((col, i) => { x.fillStyle = col; x.fillRect(0, i * h / bands.length, w, h / bands.length + 1); });
-  x.fillStyle = 'rgba(0,0,0,.12)'; for (let i = 0; i < w; i += 4) x.fillRect(i, 0, 1, h);
-});
-// a robe as a lathe profile [radius, height], flattened front to back
-const robeGeo = pts => new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), 22).scale(1, 1, 0.78);
 
 export async function loadPeople(onProgress) {
   const loader = new GLTFLoader();
@@ -73,7 +53,6 @@ export async function loadPeople(onProgress) {
     p.castShadow = p.receiveShadow = true; p.scale.setScalar(0.95 + rnd() * 0.1);
     return p;
   };
-  hooks.kanzu = k => { const p = new THREE.Mesh(crowd[k % 4], CROWD_MAT); p.castShadow = true; return p; }; // the first four crowd looks wear kanzu
   hooks.rider = rnd => { const p = new THREE.Mesh(riders[Math.floor(rnd() * riders.length)], CROWD_MAT); p.castShadow = true; return p; };
 }
 
@@ -93,14 +72,6 @@ function makeRunner(gltf, colors) {
   const root = gltf.scene; recolor(root, colors); root.rotation.y = Math.PI; // models face +z, the chase runs toward -z
   const holder = new THREE.Group(); holder.add(root);
   holder.updateMatrixWorld(true);
-  // outlines: a back-face copy of every skinned part, sharing its skeleton
-  const ws = new THREE.Vector3();
-  root.traverse(o => {
-    if (!o.isSkinnedMesh || o.userData.outline) return;
-    o.getWorldScale(ws);
-    const ol = new THREE.SkinnedMesh(o.geometry, outlineMat(0.016 / ws.x)); ol.userData.outline = true;
-    ol.bind(o.skeleton, o.bindMatrix); ol.frustumCulled = false; o.add(ol);
-  });
   const mixer = new THREE.AnimationMixer(root), acts = {}, big = bigBones(root);
   for (const c of gltf.animations) acts[c.name.split('|')[1]] = mixer.clipAction(c);
   let cur = null;
@@ -129,7 +100,7 @@ function makeRunner(gltf, colors) {
   holder.userData.wear = (boneName, mesh, at) => {
     const bone = root.getObjectByName(boneName), p = new THREE.Vector3();
     bone.getWorldPosition(p); mesh.position.set(p.x + (at?.x || 0), at?.y ?? 0, p.z + (at?.z || 0));
-    for (const [b] of big) b.scale.setScalar(1); // attach at true size, then the bigger head carries the kofia up with it
+    for (const [b] of big) b.scale.setScalar(1); // attach at true size, then the bigger head carries the piece up with it
     holder.add(mesh); holder.updateMatrixWorld(true); bone.attach(mesh);
     for (const [b, s] of big) b.scale.setScalar(s);
     mesh.castShadow = true;
@@ -139,15 +110,9 @@ function makeRunner(gltf, colors) {
   return holder;
 }
 
-// the runner: white kanzu hitched up to the knees for the chase, embroidered kofia, striped kikoi sash
+// the runner: bright yellow hoodie, blue jeans and white sneakers
 export function makeHero() {
-  const h = makeRunner(models.hoodie, { Purple: 0xfbfaf3, LightBlue: 0xe6dcc6, White: 0xffffff, Skin: 0x6b4428, Hair: HAIR });
-  const white = toon({ color: 0xfbfaf3, side: THREE.DoubleSide }, 0.25);
-  h.userData.wear('Hips', new THREE.Mesh(robeGeo([[0.35, 0.5], [0.33, 0.58], [0.27, 0.8], [0.225, 0.98], [0.205, 1.06]]), white));
-  h.userData.wear('Hips', new THREE.Mesh(new THREE.CylinderGeometry(0.218, 0.224, 0.12, 22, 1, true).scale(1, 1, 0.8), toon({ map: kikoiTex('#c8102e', '#ffc21a', '#1546b8'), side: THREE.DoubleSide })), { y: 0.99 });
-  h.userData.wear('Hips', new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.24, 0.04), toon({ map: kikoiTex('#c8102e', '#ffc21a', '#1546b8') })), { x: 0.13, y: 0.86, z: -0.17 });
-  h.userData.kofia = h.userData.wear('Head', new THREE.Mesh(new THREE.CylinderGeometry(0.148, 0.156, 0.1, 26), [toon({ map: kofiaTex() }), toon({ color: 0xfbfaf3 }), toon({ color: 0xfbfaf3 })]), { y: 1.78 });
-  h.userData.wear('Chest', new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.2, 6), toon({ color: 0xd9a830 })), { y: 1.38, z: -0.15 }); // kanzu tassel
+  const h = makeRunner(models.hoodie, { Purple: 0xffc21a, LightBlue: 0x1f3f8f, White: 0xffffff, Skin: 0x6b4428, Hair: HAIR });
   return h;
 }
 export function makeThief() {
@@ -162,7 +127,7 @@ export function makeThief() {
 }
 
 // ---------- the street crowd: men of the coast ----------
-const CROWD_MAT = toon({ vertexColors: true, side: THREE.DoubleSide }, 0.22);
+const CROWD_MAT = toon({ vertexColors: true, side: THREE.DoubleSide });
 const crowd = [], riders = [];
 const v3 = new THREE.Vector3();
 function bakePose(gltf, clipName, time, colors, dress) {
@@ -196,24 +161,18 @@ function bakePose(gltf, clipName, time, colors, dress) {
   return geo;
 }
 const piece = (geo, color, x, y, z) => { const o = new THREE.Mesh(geo); o.position.set(x, y, z); o.userData.color = new THREE.Color(color); return o; };
-const CAP = new THREE.CylinderGeometry(0.188, 0.196, 0.12, 20), CAP_BAND = new THREE.CylinderGeometry(0.198, 0.2, 0.04, 20, 1, true);
 const SPH = new THREE.SphereGeometry(0.5, 14, 10);
-const kofia = (cap, band) => ({ head }) => [piece(CAP, cap, head.x, head.y + 0.34, head.z + 0.02), piece(CAP_BAND, band, head.x, head.y + 0.31, head.z + 0.02)];
-const KANZU = robeGeo([[0.33, 0.06], [0.31, 0.3], [0.27, 0.7], [0.23, 0.98], [0.21, 1.08]]);
-const KIKOI = robeGeo([[0.31, 0.32], [0.28, 0.55], [0.24, 0.85], [0.22, 1.0]]);
-const kanzu = (cap, band, robe = 0xfbfaf3) => b => [piece(KANZU, robe, b.hips.x, 0, b.hips.z), ...kofia(cap, band)(b)];
-const kikoi = (wrap, cap) => b => [piece(KIKOI, wrap, b.hips.x, 0, b.hips.z), ...(cap ? kofia(cap, 0xd9a830)(b) : [])];
 function buildCrowd() {
   const B = i => BRIGHT[i % BRIGHT.length], S = i => SKIN[i % SKIN.length];
   const man = (i, shirt, trousers) => ({ White: shirt, Red_Dark: shirt, LightBrown: trousers, LightBlue: trousers, Skin: S(i), Skin_Darker: S(i + 1), Hair: HAIR });
   const youth = (i, top, jeans) => ({ Purple: top, Black: top, LightBlue: jeans, White: 0xffffff, Skin: S(i), Hair: HAIR, Red: HAIR, Red_Dark: HAIR, Earrings: 0xe0b04a });
   const list = [
-    ['casual', 'Wave', 0.3, man(0, 0xfbfaf3, 0xfbfaf3), kanzu(0xfbfaf3, 0x7a1f2b)],             // kanzu and embroidered kofia
-    ['casual', 'Idle', 0.2, man(1, 0xf1e8d6, 0xf1e8d6), kanzu(0xfbfaf3, 0xd9a830, 0xf1e8d6)],
-    ['casual', 'Interact', 0.5, man(2, 0xfbfaf3, 0xfbfaf3), kanzu(0xfbfaf3, 0x2f6b4f)],         // pointing at the thief
-    ['casual', 'Idle_Neutral', 0.6, man(3, 0xe9e1cf, 0xe9e1cf), kanzu(0x7a1f2b, 0xd9a830, 0xe9e1cf)],
-    ['casual', 'Wave', 0.7, man(1, B(3), 0x3d3d3d), kikoi(0x1546b8, 0xfbfaf3)],                   // shirt and kikoi
-    ['casual', 'Idle', 0.5, man(2, 0xffffff, 0x3d3d3d), kikoi(0xc8102e)],
+    ['casual', 'Wave', 0.3, man(0, 0xffffff, 0x2b3a55)],
+    ['casual', 'Idle', 0.2, man(1, B(1), 0x3d3d3d)],
+    ['casual', 'Interact', 0.5, man(2, B(0), 0x2b3a55)],                                          // pointing at the thief
+    ['casual', 'Idle_Neutral', 0.6, man(3, B(5), 0x8a6a3a)],
+    ['casual', 'Wave', 0.7, man(1, B(3), 0x3d3d3d)],
+    ['casual', 'Idle', 0.5, man(2, 0xffffff, 0x3d3d3d)],
     ['casual', 'Interact', 0.4, man(0, B(2), 0x2b3a55)],
     ['casual', 'Idle_Neutral', 0.5, man(3, B(6), 0x8a6a3a)],
     ['hoodie', 'Wave', 0.5, youth(2, B(4), 0x2b3a55)],

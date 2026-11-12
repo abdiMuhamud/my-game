@@ -3,6 +3,10 @@
 A street-chase runner set in Mombasa: chase Kibaka from Likoni Ferry through Moi Avenue, Marikiti,
 Mji wa Kale, Fort Jesus and Nyali Bridge to Bamburi Beach.
 
+The streets are modelled on the real city: white matatus with the yellow stripe, yellow tuk-tuks, the cream
+Moi Avenue tusks, blue-and-white CBD buildings, almond shade trees, coral-stone Old Town and Fort Jesus,
+under a real photographed sky.
+
 ## Download
 
 - Android app: [apk/mwizi-mombasa.apk](https://github.com/abdiMuhamud/my-game/raw/main/apk/mwizi-mombasa.apk)
@@ -58,4 +62,5 @@ requires uninstalling the previous build first, which removes its local scores.
 
 ## Credits
 
-Character models by Quaternius (CC0). Fonts: Lilita One and Nunito (SIL Open Font License).
+Character models by Quaternius (CC0). Photo textures and sky HDRIs from Poly Haven (CC0).
+Post-processing and HDR loader from the three.js examples (MIT). Fonts: Lilita One and Nunito (SIL Open Font License).

@@ -184,3 +184,45 @@ svg { width: 1em; height: 1em; display: block; flex: none; }
 .card::before, .levelcard::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px; border-radius: 26px 26px 0 0; background: repeating-linear-gradient(90deg, #c8102e 0 12px, #ffc21a 12px 24px, #0d1b2a 24px 30px, #12b5b0 30px 42px, #ffc21a 42px 54px); }
 .levelcard { position: relative; overflow: hidden; }
 .maphead { border-bottom: 6px solid; border-image: repeating-linear-gradient(90deg, #c8102e 0 12px, #ffc21a 12px 24px, #0d1b2a 24px 30px, #12b5b0 30px 42px) 6; padding-bottom: 8px; }
+
+/* ---------- Premium Pass 1 ---------- */
+#fxOverlay { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#loading .tip { max-width: 280px; text-align: center; font-size: 13px; opacity: .85; line-height: 1.35; }
+.logo { background-size: 100% 100%, 300% 100%; background-image: linear-gradient(180deg, #fff27a 8%, #ffc21a 48%, #ff8a1a 96%), linear-gradient(100deg, transparent 40%, rgba(255,255,255,.85) 50%, transparent 60%); background-blend-mode: screen; animation: shine 4.5s ease-in-out infinite; }
+@keyframes shine { 0%, 55% { background-position: 0 0, 130% 0; } 100% { background-position: 0 0, -30% 0; } }
+.card { animation: cardIn .38s cubic-bezier(.2, 1.5, .4, 1) both; }
+@keyframes cardIn { from { transform: translateY(30px) scale(.92); opacity: 0; } }
+.screen, .mapscreen { animation: fadeIn .35s ease both; }
+@keyframes fadeIn { from { opacity: 0; } }
+#hud .pill.bump { animation: bump .22s ease; }
+@keyframes bump { 50% { transform: scale(1.14); } }
+#trail { animation: march 1.4s linear infinite; }
+@keyframes march { to { stroke-dashoffset: -24; } }
+.langbtn.gear { right: auto; left: 14px; width: 38px; padding: 0; justify-content: center; }
+.langbtn.gear svg { font-size: 20px; }
+/* opening scene caption */
+.introcap { position: fixed; left: 0; right: 0; bottom: calc(10% + env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 8px; color: #fff; text-align: center; pointer-events: auto; padding: 0 16px; }
+.introcap b { font: 400 clamp(22px, 7vw, 38px) var(--display); letter-spacing: .5px; text-shadow: 0 3px 0 #0d1b2a, 0 6px 16px rgba(0,0,0,.5); background: rgba(13,27,42,.45); padding: 6px 18px; border-radius: 14px; }
+.introcap small { font-size: 12px; opacity: .8; }
+/* first-run tutorial hint */
+.tut { position: fixed; left: 0; right: 0; top: 42%; display: flex; flex-direction: column; align-items: center; gap: 12px; pointer-events: none; color: #fff; }
+.tut .hand { position: relative; width: 120px; height: 90px; }
+.tut .gesture { position: absolute; left: 50%; top: 0; width: 70px; height: 70px; margin-left: -35px; color: #ffc21a; filter: drop-shadow(0 3px 0 #0d1b2a); }
+.tut .finger { position: absolute; left: 50%; top: 30px; width: 54px; height: 54px; margin-left: -27px; }
+.tut.lane .finger { animation: swipeX 1s ease-in-out infinite; } .tut.jump .finger { animation: swipeUp 1s ease-in-out infinite; }
+.tut.slide .finger { animation: swipeDown 1s ease-in-out infinite; } .tut.throw .finger { animation: tap .8s ease-in-out infinite; }
+@keyframes swipeX { 0%, 100% { transform: translateX(-40px); } 50% { transform: translateX(40px); } }
+@keyframes swipeUp { 0% { transform: translateY(20px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-40px); opacity: 0; } }
+@keyframes swipeDown { 0% { transform: translateY(-30px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(30px); opacity: 0; } }
+@keyframes tap { 50% { transform: scale(.82); } }
+.tut b { font: 400 clamp(20px, 6vw, 30px) var(--display); background: rgba(13,27,42,.7); border-radius: 14px; padding: 6px 16px; box-shadow: inset 0 0 0 2px rgba(255,255,255,.25); }
+/* settings */
+.settingscard { text-align: left; }
+.setrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 2px; border-bottom: 1px solid #e6ecf5; font-size: 15px; }
+.setrow input[type=range] { width: 52%; accent-color: #1546b8; }
+.seg { display: flex; background: #eef3fb; border-radius: 12px; padding: 3px; }
+.seg button, .toggle { font: 400 15px var(--display); padding: 7px 14px; border-radius: 10px; background: transparent; color: #5b6878; }
+.seg button.on { background: #1546b8; color: #fff; }
+.toggle { background: #eef3fb; min-width: 92px; }
+.toggle.on { background: #ffc21a; color: #0d1b2a; }
+.mapdhow { filter: drop-shadow(0 2px 2px rgba(0,0,0,.3)); }
